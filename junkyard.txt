@@ -1,0 +1,28 @@
+// here lies the first image loading test of the rewrite
+
+            const imageUrl = "./imgtest.png";
+            const imageElement = document.getElementById("my-image");
+
+            try {
+                const response = await fetch(imageUrl);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                console.log(`<i> Writing image to /test/img.png by response.blob()`);
+                await FS.write('/test/img.png', await response.blob(), 'blob');
+                console.log(`<i> Reading image normally from /test/img.png`);
+                const img = await FS.read('/test/img.png');
+                console.log(`<i> Creating object URL from blob`);
+                const objectUrl = await URL.createObjectURL(img);
+                console.log(`<i> Trying to display image`);
+                imageElement.src = objectUrl;
+                imageElement.onload = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    console.log(`<i> Image loaded and URL revoked!`);
+                };
+
+            } catch (error) {
+                console.error("Error fetching image:", error);
+            }

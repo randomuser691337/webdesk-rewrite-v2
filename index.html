@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+
+<head>
+
+</head>
+
+<img id="my-image" />
+
+<body>
+
+    <head>
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+        <!--<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+        <script type="importmap">
+    {
+      "imports": {
+        "@material/web/": "https://esm.run/@material/web/"
+      }
+    }
+  </script>
+        <script>
+            function argbToRgb(argb) {
+                // AI made argbToRgb()
+                let hex = (argb >>> 0).toString(16).padStart(8, '0');
+                const a = parseInt(hex.slice(0, 2), 16);
+                const r = parseInt(hex.slice(2, 4), 16);
+                const g = parseInt(hex.slice(4, 6), 16);
+                const b = parseInt(hex.slice(6, 8), 16);
+                return { a, r, g, b };
+            }
+
+            function CSSVar(varname, value) {
+                document.documentElement.style.setProperty(`--${varname}`, value);
+            }
+
+            // Get the theme from a hex color
+            const theme = themeFromSourceColor(argbFromHex('#00ff00'), [
+                {
+                    name: "custom-1",
+                    value: argbFromHex("#ff0000"),
+                    blend: true,
+                },
+            ]);
+
+            applyTheme(theme, { target: document.body, dark: false });
+                console.log(theme.schemes)
+            for (const key in theme.schemes.light.props) {
+                // fixed by AI
+                const value = theme.schemes.light[key];
+                console.log(key, value, argbToRgb(value));
+            }
+
+            const ui1 = argbToRgb(theme.schemes.light.props.background);
+
+            CSSVar('ui-1', `${ui1.r}, ${ui1.g}, ${ui1.b}`);
+
+            const txt = argbToRgb(theme.schemes.light.props.onSurface);
+
+            CSSVar('text', `${txt.r}, ${xt.g}, ${txt.b}`);
+
+            document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+
+        </script>-->
+    </head>
+
+    <body>
+
+    </body>
+    <script>
+        // WebDesk File System v?.?
+        // dbh_ra9 - Feb 28, 2026
+        // Assisted, NOT written with AI
+        var version = "0.3.3";
+        var WFSVer = "// WFS v67.0";
+        var ZIPJSVer = "// 1up"
+        var WFS;
+        var opID = 0;
+        var promises = {}
+        var initalr = false;
+        var overzip = false;
+        (async function () {
+            let over = false;
+            async function loadwfs(code) {
+                const blob = new Blob([code], { type: "application/javascript" });
+                const url = URL.createObjectURL(blob);
+                WFS = await new Worker(url);
+                await FS.init();
+            }
+            if (navigator.onLine) {
+                let code = localStorage.getItem("wfs_worker");
+
+                if (!code || !code.startsWith(WFSVer)) {
+                    console.log(`<i> ${WFSVer} installed or updated in localStorage`);
+                    const res = await fetch("./wfs.js");
+                    code = await res.text();
+                    localStorage.setItem("wfs_worker", code);
+                    await loadwfs(code);
+                } else {
+                    await loadwfs(code);
+                }
+            } else {
+                const code = localStorage.getItem("wfs_worker");
+                if (!code) {
+                    console.log("<!> It's over");
+                    over = true;
+                } else {
+                    await loadwfs(code);
+                }
+            }
+
+            if (!over) {
+                WFS.addEventListener("message", (event) => {
+                    const data = event.data;
+
+                    if (data.contents === "initdone") {
+                        boot();
+                        return;
+                    }
+
+                    const promise = promises[data.opID];
+
+                    if (!promise) return;
+
+                    if (data.error) {
+                        promise.reject(data.error);
+                    } else {
+                        console.log('resolving promise for ' + data.opID);
+                        promise.resolve(data.contents);
+                    }
+
+                    delete promises[data.opID];
+                });
+            }
+        })();
+
+        const FS = {
+            init: function (unsafe) {
+                if (initalr === false || unsafe === true) {
+                    initalr = true;
+                    opID = opID + 1;
+                    WFS.postMessage({ opID, op: "init" });
+                } else {
+                    console.log(`<i> can't start WFS twice!`);
+                }
+            },
+            erase: function (confirmation, uID) {
+                return new Promise((resolve, reject) => {
+                    opID++;
+                    promises[opID] = { resolve, reject };
+                    WFS.postMessage({ opID, op: "erase", contents: confirmation });
+                });
+            },
+            read: function (path, uID, returnAllData) {
+                return new Promise((resolve, reject) => {
+                    opID++;
+                    promises[opID] = { resolve, reject };
+                    WFS.postMessage({ opID, op: "read", path, contents: uID, type: returnAllData });
+                });
+            },
+            write: function (path, contents, type) {
+                return new Promise((resolve, reject) => {
+                    opID++;
+                    promises[opID] = { resolve, reject };
+                    WFS.postMessage({ opID, op: "write", path, contents, type });
+                });
+            },
+            ls: function (path, contents, type) {
+                return new Promise((resolve, reject) => {
+                    opID++;
+                    promises[opID] = { resolve, reject };
+                    WFS.postMessage({ opID, op: "ls", path: path });
+                });
+            },
+        };
+
+        // LITERALLY COPIED from WebDesk 0.3.3's previous rebuild
+
+        var set = {
+            async ensureConfigLoaded() {
+                if (!sys.config) {
+                    try {
+                        const raw = await FS.read("/user/info/config.json");
+                        if (!raw) {
+                            sys.config = {};
+                            return;
+                        }
+                        sys.config = JSON.parse(raw);
+                        console.log(sys.config);
+                    } catch (e) {
+                        sys.config = {};
+                    }
+                }
+            },
+            async write(key, value) {
+                try {
+                    await this.ensureConfigLoaded();
+                    sys.config[key] = value;
+                    await FS.write("/user/info/config.json", JSON.stringify(sys.config), 'text');
+                    return true;
+                } catch (error) {
+                    console.log(error);
+                    return false;
+                }
+            },
+            async del(key) {
+                try {
+                    await this.ensureConfigLoaded();
+                    delete sys.config[key];
+                    await FS.write("/user/info/config.json", JSON.stringify(sys.config), 'text');
+                    return true;
+                } catch (error) {
+                    console.log(error);
+                    return false;
+                }
+            },
+            async read(key) {
+                await this.ensureConfigLoaded();
+                return sys.config[key];
+            }
+        };
+    </script>
+    <script>
+        var sys = {
+            config: undefined
+        }
+
+        var core = {
+            debug: true,
+            latestVersion: '0.3.3',
+            lowgfxMode: false,
+            incrementTask: 0,
+            tasks: [],
+            onTaskStart: [],
+            onTaskClosed: [],
+            async loadScript(data2, path) {
+                console.log('<i> Loading JS: ' + path);
+                if (path === true) {
+                    const data = await FS.read(data2);
+                    if (!data) {
+                        console.error(`<!> ${data2} not found or not readable.`);
+                        return;
+                    }
+                    data2 = data;
+                }
+                var script = document.createElement('script');
+                script.textContent = data2;
+                document.head.appendChild(script);
+            },
+            async loadStyle(data2, path) {
+                console.log('<i> Loading CSS: ' + path);
+                if (path === true) {
+                    const data = await FS.read(data2);
+                    if (!data) {
+                        console.error(`<!> ${data2} not found or not readable.`);
+                        return;
+                    }
+                    data2 = data;
+                }
+                var script = document.createElement('style');
+                script.textContent = data2;
+                document.head.appendChild(script);
+            },
+            async loadModule(code2, path) {
+                const id = this.incrementTask++;
+                if (path === true) {
+                    const read = await FS.read(code2);
+                    code2 = read;
+                }
+                const code = `export var id = ${id};\n` + code2;
+
+                const blob = new Blob([code], { type: "application/javascript" });
+                const url = URL.createObjectURL(blob);
+                const mod = await import(url);
+
+                const task = { name: mod.name || 'Unnamed Module', id, task: mod };
+                this.tasks.push(task);
+                this.onTaskStart.forEach(cb => cb.callback(task));
+
+                URL.revokeObjectURL(url);
+                return mod;
+            },
+            async removeModule(id) {
+                const index = this.tasks.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    this.tasks.splice(index, 1);
+                    this.onTaskClosed.forEach(cb => cb.callback(id));
+                }
+            }
+        }
+        console.log("<i> WebDesk Bootloader (Immutable) initializing filesystem");
+        console.log("<i> Conducting image test...");
+        async function boot() {
+            if (navigator.onLine) {
+                let code = localStorage.getItem("zip.min.js");
+
+                if (!code || !code.startsWith(ZIPJSVer)) {
+                    console.log(`<i> zip.js ${ZIPJSVer} installed or updated in localStorage`);
+                    const res = await fetch("./zip.min.js");
+                    code = await res.text();
+                    localStorage.setItem("zip.min.js", code);
+                    await core.loadScript(code);
+                } else {
+                    await core.loadScript(code);
+                }
+            } else {
+                const code = localStorage.getItem("zip.min.js");
+                if (!code) {
+                    console.log("<!> It's over");
+                    overzip = true;
+                } else {
+                    await core.loadScript(code);
+                }
+            }
+
+            // checkFileTypes rewritten by ChatGPT to be more efficient
+            function checkFileTypes(filepath) {
+                const blobFiles = [".png", ".jpg", ".jpeg", ".mp4", ".mp3", ".wav"];
+                const lower = filepath.toLowerCase();
+
+                return blobFiles.some(ext =>
+                    lower.endsWith(ext) || lower.endsWith(ext + "/")
+                );
+            }
+
+            // BOOTLOADER CODE
+            // BOOTLOADER CODE
+            // BOOTLOADER CODE
+
+            async function installWebDesk() {
+                const res = await fetch("./desk.zip", { cache: "no-cache" });
+                blob = await res.blob();
+                const reader = new zip.ZipReader(new zip.BlobReader(blob));
+
+                const entries = await reader.getEntries();
+                console.log(entries);
+                if (entries.length) {
+                    let i = 0;
+                    async function iterate() {
+                        if (i !== entries.length) {
+                            if (entries[i].directory === true) {
+                                console.log('<i> skipping directory: ' + entries[i]);
+                            } else {
+                                let contents;
+                                if ((checkFileTypes(entries[i].filename))) {
+                                    contents = await entries[i].getData(new zip.BlobWriter());
+                                    console.log(entries[i].filename, ` is a blob`);
+                                } else {
+                                    contents = await entries[i].getData(new zip.TextWriter());
+                                }
+                                await FS.write("/" + entries[i].filename, contents);
+                            }
+                            i++
+                            iterate();
+                        }
+                    }
+                    iterate();
+                }
+
+                await reader.close();
+                await FS.write('/system/version', version);
+                await init();
+            }
+
+            async function init() {
+                console.log('<i> Starting WebDesk...');
+                await core.loadScript('/system/ui.js', true);
+                await core.loadStyle('/system/styles.css', true);
+                console.log(`<i> Initializing Material UI...`);
+                await core.loadScript('/system/mui.js', true);
+
+                function initMUI() {
+                    UI.system.applyTheme('#ff0000', '#0000ff');
+                    document.adoptedStyleSheets.push(MaterialUI.typescaleStyles.styleSheet);
+                }
+
+                initMUI();
+
+                const Launcher = await core.loadModule('/system/apps/Launcher.app/index.js', true);
+                const editor = await Launcher.launch(FS, UI, core);
+                core.loadScript(await FS.read('/system/init.js'));
+            }
+
+            // FORCEUPDATE flag
+
+            const FORCEUPDATE = true;
+
+            // END OF FORCEUPDATE flag 
+
+            const ver = await FS.read('/system/version');
+            if (ver !== version || FORCEUPDATE === true) {
+                console.log('WebDesk is out of date! Updating...');
+                installWebDesk();
+            } else {
+                init();
+            }
+
+            // END OF BOOTLOADER CODE
+            // END OF BOOTLOADER CODE
+            // END OF BOOTLOADER CODE
+        }
+    </script>
+</body>
