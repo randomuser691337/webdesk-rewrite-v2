@@ -17,8 +17,14 @@ var UI = {
         el.innerText = text;
         return el;
     },
-    openFile: function (path, type) {
+    openFile: async function (path, type) {
         if (type === "text") {
+            const editorApp = await set.read('WDDefaultEditor');
+            if (core.debug === true) console.log(editorApp);
+            const TextEditor = await core.loadModule(`${editorApp}`, true);
+            if (core.debug === true) console.log(TextEditor);
+            TextEditor.editor(path);
+        } else {
             
         }
     },
@@ -81,12 +87,22 @@ var UI = {
         }
     },
     create: function (elType, parent, classList) {
+        /* create(elType, parent, classList) documentation
+            - create elType parameter: Element tag (like div/lists)
+            - create parent parameter: The element's parent (like document.body or another div)
+            - create classList parameter: The element's classes, like "column-button-container" or something
+            - create(elType, parent, classList) simply returns the element
+            - Usage example:
+                const element = UI.create('div', document.body, 'test-div');
+                UI.text('It works!', element);
+        */
         const el = document.createElement(elType);
         el.classList = classList;
         parent.appendChild(el);
         return el;
     },
     container: function (options, parent, classList) {
+        // tbd
         const cont = UI.create('div', parent, classList);
         if (options !== undefined) {
 
@@ -106,6 +122,27 @@ var UI = {
         return txt;
     },
     window: function (title, module) {
+        /* window(title, module) documentation
+            - window title parameter: Requires a name for the window title
+            - window module parameter: Your app's module, to end when the window is closed (optional)
+            - window(title, module) returns:
+                - titlebar: The titlebar's elements
+                    - titlebar.main: Titlebar's root element
+                    - titleBar.layout: The layout element for the titlebar's text/buttons
+                    - titlebar.text: The titlebar's title
+                    - titlebar.buttons: The titlebar's button container
+                - main: Window / it's content except titlebar
+                    - main.window: Root window element
+                    - main.content: Content element, append buttons/elements into this
+
+            - To create a window, for example:
+                const win = UI.window('Example window', module); // close buttons will only remove the window, not the module if the module param is undefined
+                UI.text('It works!', win.main.content);
+                const btn = UI.button("Log window to console", win.main.content, 'md-outlined-button');
+                btn.addEventListener('click', function () { console.log(win); });
+        
+        */
+
         const win = this.create('div', document.body, 'window');
         const titlebar = this.create('div', win, 'window-titlebar');
         const titleBarLayout = this.create('div', titlebar, 'window-titlebar-layout flexbox');
@@ -122,6 +159,7 @@ var UI = {
         console.log(windowArray);
         if (windowArray.at(-1)) {
             const lastWin = Number(window.getComputedStyle(windowArray.at(-1)).zIndex) + 1;
+            if (core.debug === true) console.log(`<i> register drag current win zIndex: ` + lastWin)
             elmnt.style.zIndex = lastWin;
         }
         windowArray.push(elmnt);
@@ -211,6 +249,18 @@ var UI = {
     },
     contextMenu: function (event) {
         // Used AI to debug
+        /* contextMenu(event) documentation
+            - contextMenu event parameter: Needs to include { event.clientX, event.clientY }
+            - contextMenu returns { menu, finish(), and closeMenu(event) }
+                - menu: The actual context menu element. Append buttons/elements to this
+                - finish(): Adds close listeners and positions the menu. Use after adding your elements
+                - closeMenu(event): Mostly useless, requires an event
+            - To create a menu, for example:
+                  const ctx = UI.contextMenu(event); // event needs to include an X and Y
+                  const button = UI.button('Menu button', ctx.menu, 'button', 'list-button');
+                  button.addEventListener('click', function () { console.log("<i> Menu click"); });
+                  ctx.finish() // Finishes menu w/ listeners, REQUIRED
+        */
         const x = event.clientX;
         const y = event.clientY;
         const el = UI.create('div', document.body, 'context-menu');
@@ -267,7 +317,12 @@ var UI = {
 
 
             let scheme = theme.schemes.light;
-            if (dark === true) scheme = theme.schemes.dark;
+            if (dark === true) {
+                scheme = theme.schemes.dark;
+                UI.system.changeCSSVar('ui-surface-contents-no-color', `250, 250, 250`);
+            } else {
+                UI.system.changeCSSVar('ui-surface-contents-no-color', `0, 0, 0`);
+            }
 
             MaterialUI.applyTheme(theme, { target: document.body, dark });
             console.log(theme.schemes)

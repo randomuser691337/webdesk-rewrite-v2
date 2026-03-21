@@ -1,6 +1,5 @@
 :root {
     --accent: 30, 30, 225;
-    --base-background: var(--md-sys-color-tertiary);
     --ui-1: 250, 250, 250;
     --ui-1-border-color: var(--md-sys-color-primary);
     --ui-2: 230, 230, 230;
@@ -18,13 +17,13 @@
 }
 
 body {
-    background-color: var(--base-background);
+    background-color: var(--md-sys-color-inverse-tertiary);
 }
 
-*,
-button {
+button, p, div {
     font-family: "Roboto", Arial, Helvetica, sans-serif;
     font-size: var(--main-fz);
+    color: var(--text);
 }
 
 .window {
@@ -224,4 +223,10 @@ textarea:focus {
 
 .flex-grow-1 {
     flex-grow: 1;
+}
+
+.test-div {
+    background-color: rgba(var(--accent), 0.5);
+    border-radius: var(--radii-second);
+    padding: var(--padding-normal);
 }

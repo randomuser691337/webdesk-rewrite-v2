@@ -10,57 +10,7 @@
 
     <head>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
-        <!--<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-        <script type="importmap">
-    {
-      "imports": {
-        "@material/web/": "https://esm.run/@material/web/"
-      }
-    }
-  </script>
-        <script>
-            function argbToRgb(argb) {
-                // AI made argbToRgb()
-                let hex = (argb >>> 0).toString(16).padStart(8, '0');
-                const a = parseInt(hex.slice(0, 2), 16);
-                const r = parseInt(hex.slice(2, 4), 16);
-                const g = parseInt(hex.slice(4, 6), 16);
-                const b = parseInt(hex.slice(6, 8), 16);
-                return { a, r, g, b };
-            }
-
-            function CSSVar(varname, value) {
-                document.documentElement.style.setProperty(`--${varname}`, value);
-            }
-
-            // Get the theme from a hex color
-            const theme = themeFromSourceColor(argbFromHex('#00ff00'), [
-                {
-                    name: "custom-1",
-                    value: argbFromHex("#ff0000"),
-                    blend: true,
-                },
-            ]);
-
-            applyTheme(theme, { target: document.body, dark: false });
-                console.log(theme.schemes)
-            for (const key in theme.schemes.light.props) {
-                // fixed by AI
-                const value = theme.schemes.light[key];
-                console.log(key, value, argbToRgb(value));
-            }
-
-            const ui1 = argbToRgb(theme.schemes.light.props.background);
-
-            CSSVar('ui-1', `${ui1.r}, ${ui1.g}, ${ui1.b}`);
-
-            const txt = argbToRgb(theme.schemes.light.props.onSurface);
-
-            CSSVar('text', `${txt.r}, ${xt.g}, ${txt.b}`);
-
-            document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
-
-        </script>-->
+        <!--<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">-->
     </head>
 
     <body>
@@ -68,7 +18,7 @@
     </body>
     <script>
         // WebDesk File System v?.?
-        // dbh_ra9 - Feb 28, 2026
+        // dbh_ra9 - Mar 19, 2026
         // Assisted, NOT written with AI
         var version = "0.3.3";
         var WFSVer = "// WFS v67.0";
@@ -164,7 +114,21 @@
                     WFS.postMessage({ opID, op: "write", path, contents, type });
                 });
             },
-            ls: function (path, contents, type) {
+            rm: function (path) {
+                return new Promise((resolve, reject) => {
+                    opID++;
+                    promises[opID] = { resolve, reject };
+                    WFS.postMessage({ opID, op: "rm", path });
+                });
+            },
+            mkdir: function (path) {
+                return new Promise((resolve, reject) => {
+                    opID++;
+                    promises[opID] = { resolve, reject };
+                    WFS.postMessage({ opID, op: "mkdir", path });
+                });
+            },
+            ls: function (path) {
                 return new Promise((resolve, reject) => {
                     opID++;
                     promises[opID] = { resolve, reject };
@@ -187,6 +151,7 @@
                         sys.config = JSON.parse(raw);
                         console.log(sys.config);
                     } catch (e) {
+                        if (debug === true) console.log(e);
                         sys.config = {};
                     }
                 }

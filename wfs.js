@@ -14,13 +14,14 @@ function generateUID() {
     return [...bytes].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-
 var FS = {
     eraseall: async function (confirmation) {
         // confirmation MUST be "I understand all data in WFS will be destroyed";
         if (confirmation === "I understand all data in WFS will be destroyed") {
+            console.log(`<!> ERASING WFS...`);
             opfsRoot.removeEntry('handles', { recursive: true });
             opfsRoot.removeEntry('objects', { recursive: true });
+            console.log(`<!> Erase success`);
             return true;
         } else {
             return false;
@@ -32,17 +33,12 @@ var FS = {
         if (!fromDataDir) {
             let current = metaDir;
             const parts = path.split("/").filter(Boolean);
-            console.log(parts);
             for (let i = 0; i < parts.length - 1; i++) {
                 current = await current.getDirectoryHandle(parts[i]);
-                console.log(current);
             }
-            console.log(parts.at(-1));
             const file = await current.getFileHandle(parts.at(-1));
             const data = await file.getFile();
-            console.log(data);
             const uid = await data.text();
-            console.log("UID for", path, "is", uid);
 
             return await this.read(uid, true, returnAllData);
         } else {
@@ -80,20 +76,47 @@ var FS = {
             return false;
         }
     },
-    walkPath: async function (path) {
+    delete: async function (path) {
+        try {
+            async function checkOld() {
+                try {
+                    let current = metaDir;
+                    const parts = path.split("/").filter(Boolean);
+                    for (let i = 0; i < parts.length - 1; i++) {
+                        current = await current.getDirectoryHandle(parts[i]);
+                    }
+                    const file = await current.getFileHandle(parts.at(-1));
+                    const data = await file.getFile();
+                    const uid = await data.text();
+                    FS.switchdelete(path, metaDir);
+                    return uid;
+                } catch (error) {
+                    console.log(error);
+                    return false;
+                }
+            }
+
+            let fileuID = await checkOld();
+            if (fileuID === false) {
+                return false;
+            } else {
+                FS.switchdelete(fileuID, dataDir);
+                return true;
+            }
+        } catch (error) {
+            console.log(error);
+            return false;
+        }
+    },
+    walkPath: async function (path, create = false) {
         if (!path.endsWith("/")) {
             path += "/";
         }
 
-        console.log(path);
-        const create = false;
         let current = metaDir;
         const parts = path.split("/").filter(Boolean);
-        console.log(parts);
 
         for (let i = 0; i < parts.length; i++) {
-            console.log(`Reading ${parts[i]}`)
-            console.log(i, current);
             current = await current.getDirectoryHandle(parts[i], { create });
         }
 
@@ -101,12 +124,20 @@ var FS = {
 
         let i = 0;
         for await (const [name, handle] of current.entries()) {
-            console.log(`Name: ${name}, Kind: ${handle.kind}, Path: ${path + name}`);
             items[i] = { name: name, kind: handle.kind, path: path + name }
             i++;
         }
 
         return items;
+    },
+    mkdir: async function (path) {
+        try {
+            FS.walkPath(path, true);
+            return true;
+        } catch (error) {
+            console.log(error);
+            return false;
+        }
     },
     switchwrite: async function (path, contents, kind, current, echo) {
         const create = true;
@@ -117,7 +148,6 @@ var FS = {
         }
 
         const file = await current.getFileHandle(parts.at(-1), { create });
-        console.log(file, parts.at(-1));
         const writable = await file.createWritable();
         await writable.write(contents);
         await writable.close();
@@ -129,16 +159,12 @@ var FS = {
                 try {
                     let current = metaDir;
                     const parts = path.split("/").filter(Boolean);
-                    console.log(parts);
                     for (let i = 0; i < parts.length - 1; i++) {
                         current = await current.getDirectoryHandle(parts[i]);
-                        console.log(current);
                     }
-                    console.log(parts.at(-1));
                     const file = await current.getFileHandle(parts.at(-1));
                     const data = await file.getFile();
                     const uid = await data.text();
-                    console.log("UID for", path, "is", uid);
                     return uid.slice(0, -5);
                 } catch (error) {
                     return await generateUID();
@@ -162,8 +188,6 @@ var FS = {
 
             const metaHandler = await this.switchwrite(path, fileuID, 'text', metaDir);
             const dataHandler = await this.switchwrite(fileuID, contents, kind, dataDir);
-
-            console.log(metaHandler, dataHandler);
             return true;
         } catch (error) {
             return false;
@@ -182,7 +206,24 @@ addEventListener('message', async event => {
     } else if (event.data.op === "write") {
         try {
             const wr = await FS.write(event.data.path, event.data.contents, event.data.type);
-            console.log(wr);
+            self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
+        } catch (error) {
+            console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
+            self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
+
+        }
+    } else if (event.data.op === "rm") {
+        try {
+            const wr = await FS.delete(event.data.path);
+            self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
+        } catch (error) {
+            console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
+            self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
+
+        }
+    } else if (event.data.op === "mkdir") {
+        try {
+            const wr = await FS.mkdir(event.data.path);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
         } catch (error) {
             console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
@@ -216,11 +257,8 @@ addEventListener('message', async event => {
         }
     } else if (event.data.op === "ls") {
         try {
-            let wr;
-            console.log(event.data);
-            wr = await FS.walkPath(event.data.path);
+            let wr = await FS.walkPath(event.data.path);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
-            console.log(wr);
         } catch (error) {
             console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });

@@ -7,26 +7,29 @@ export async function launch(FS, UI, core) {
     const startBtn = UI.button('', layout.left, 'button', 'shelf-button');
     UI.create('div', UI.create('div', startBtn, 'shelf-button-layer-2'), 'shelf-button-layer-3');
     startBtn.addEventListener('click', async function () {
-        await launcher(FS, UI, core);
+        const rect = await shelf.getBoundingClientRect();
+        if (core.debug === true) console.log(rect);
+        await launcher(FS, UI, core, rect);
     });
 
     const controlsBtn = UI.button('4:20 PM', layout.right, 'md-text-button');
     controlsBtn.addEventListener('click', async function () {
-        const rect = await shelf.getBoundingClientRect()
+        const rect = await shelf.getBoundingClientRect();
+        if (core.debug === true) console.log(rect);
         await launcher(FS, UI, core, rect);
     });
 }
 
 export async function launcher(FS, UI, core, shelfRect) {
-    const win = UI.window('Launcher');
-    const filesView = UI.create('div', win.main.content);
-    win.main.window.style.height = "300px";
-    win.main.window.style.width = "300px";
+    const win = UI.create('div', document.body, 'window');
+    const filesView = UI.create('div', win, 'window-content');
+    win.style.height = "300px";
+    win.style.width = "300px";
 
     if (shelfRect) {
         console.log(shelfRect);
-        win.main.window.style.left = "4px";
-        win.main.window.style.bottom = shelfRect.bottom + 8 + "px";
+        win.style.left = "4px";
+        win.style.bottom = shelfRect.height + 4 + "px";
     }
 
     async function refreshLauncher() {
@@ -60,9 +63,17 @@ export async function launcher(FS, UI, core, shelfRect) {
             });
         });
     }
-    const refresh = UI.button('Refresh', win.titlebar.buttons, 'button', 'small-button');
+
+    const buttons = UI.create('div', win, 'window.titlebar');
+    buttons.classList = "column-button-container";
+    buttons.style.padding = "var(--padding-normal)";
+    const refresh = UI.button('Refresh', buttons, 'button', 'small-button');
     refresh.addEventListener('click', () => refreshLauncher());
-    const close = UI.button('Close', win.titlebar.buttons, 'button', 'small-button');
-    close.addEventListener('click', () => win.main.window.remove());
+    const close = UI.button('Close', buttons, 'button', 'small-button');
+    close.addEventListener('click', () => win.remove());
     await refreshLauncher();
+}
+
+export async function close(FS, UI, core) {
+    if (core.debug === true) console.log(`<!> Terminating desktop...`);
 }

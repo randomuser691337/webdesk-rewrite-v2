@@ -53,13 +53,34 @@ export async function launch(FS, UI, core) {
             btn.addEventListener('contextmenu', function (event) {
                 event.preventDefault();
                 const menu = UI.contextMenu(event);
-                UI.button('Delete', menu.menu, 'button', 'list-button');
+                const delBtn = UI.button('Delete', menu.menu, 'button', 'list-button');
+                delBtn.addEventListener('click', function (event) {
+                    const dialog = UI.create('div', document.body, 'dialog-box');
+                    UI.text('Delete ' + file.name, dialog, 'bold');
+                    UI.text(`This cannot be undone!`, dialog).style.textDecoration = "underline";
+
+                    const buttonCont = UI.create('div', dialog, 'dialog-box-two-buttons');
+
+                    const cancel = UI.button('Cancel', buttonCont, 'md-outlined-button');
+                    cancel.addEventListener('click', function () {
+                        dialog.remove();
+                    });
+
+                    const select = UI.button('Delete', buttonCont, 'md-filled-button', 'flex-grow-1');
+                    select.addEventListener('click', async function () {
+                        dialog.innerHTML = "Removing...";
+                        await FS.rm(file.path);
+                        dialog.remove();
+                    });
+                });
                 menu.finish();
             });
 
-            btn.addEventListener('click', function () {
+            btn.addEventListener('click', async function () {
                 if (file.kind === "directory") {
-                    nav(file.path);
+                    await nav(file.path);
+                } else {
+                    await UI.openFile(file.path);
                 }
             });
         });

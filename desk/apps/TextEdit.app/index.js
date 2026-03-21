@@ -5,32 +5,41 @@ export async function launch(FS, UI, core) {
     console.log(mod);
     const filePicker = await mod.pickFile(FS, UI, core, { name: "TextEdit" });
     if (filePicker !== false) {
-        editor(filePicker.path, filePicker.type);
+        editor(filePicker.path);
     }
 }
 
-export async function editor(path) {
-    const textedit = UI.window('TextEdit - Init code');
-    const textarea = UI.create('textarea', textedit.main.content);
-    textarea.spellcheck = "off";
-    textarea.value = await FS.read(path);
-    textarea.spellcheck = "false";
-    textarea.style.width = "100%";
-    textarea.style.boxSizing = "border-box";
-    textarea.style.height = "400px";
-    textedit.main.window.style.width = "480px";
+export async function editor(path, contents) {
+    const textedit = UI.window('TextEdit');
+    const AceModule = await core.loadModule('/system/ace.js', true);
+    const textarea = ace.edit(textedit.main.content);
+    if (contents && contents !== undefined) {
+        textarea.setValue(contents);
+    } else if (path) {
+        textarea.setValue(await FS.read(path));
+    } else {
+        textarea.placeholder = `Start typing... [New File]`;
+    }
 
-    const buttonContainer = UI.container(undefined, textedit.main.content, 'column-button-container');
+    textarea.setOptions({
+        fontFamily: 'monospace',
+        fontSize: "16px"
+    });
+
+    textedit.main.content.style.height = "400px";
+    textedit.main.window.style.width = "480px";
+    const buttonContainer = UI.container(undefined, textedit.main.window, 'column-button-container');
+    buttonContainer.style.padding = "var(--padding-normal)";
 
     const save = UI.button('Save', buttonContainer);
     save.addEventListener('click', async function () {
-        await FS.write('/system/init.js', textarea.value, 'text');
+        await FS.write(path, textarea.getSession().getValue(), 'text');
         console.log('<i> Saved!');
     });
 
     const saver = UI.button('Save & restart', buttonContainer, 'md-outlined-button');
     saver.addEventListener('click', async function () {
-        await FS.write('/system/init.js', textarea.value, 'text');
+        await FS.write(path, textarea.getSession().getValue(), 'text');
         await window.location.reload();
     });
 }
