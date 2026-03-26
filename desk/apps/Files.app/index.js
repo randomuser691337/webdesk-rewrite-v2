@@ -41,9 +41,9 @@ export async function launch(FS, UI, core) {
             const layout = UI.leftRightLayout(undefined, btn);
 
             if (file.kind === "directory") {
-                UI.icon('folder', layout.left);
+                UI.icon('folder', layout.left, 'symbol-style-files');
             } else {
-                UI.icon('draft', layout.left);
+                UI.icon('draft', layout.left, 'symbol-style-files');
             }
 
             const filetxt = UI.span(file.name, layout.left);
@@ -139,9 +139,9 @@ export async function pickFile(FS, UI, core, parameters) {
                 const layout = UI.leftRightLayout(undefined, btn);
 
                 if (file.kind === "directory") {
-                    UI.icon('folder', layout.left);
+                    UI.icon('folder', layout.left, 'symbol-style-files');
                 } else {
-                    UI.icon('draft', layout.left);
+                    UI.icon('draft', layout.left, 'symbol-style-files');
                 }
 
                 const filetxt = UI.span(file.name, layout.left);

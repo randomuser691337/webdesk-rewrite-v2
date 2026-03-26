@@ -111,9 +111,14 @@ var UI = {
     },
     button: function (text, parent, type, classList) {
         if (type === undefined) type = "md-filled-tonal-button";
-
         const btn = this.create(type, parent, classList);
         btn.innerText = text;
+        return btn;
+    },
+    dangerousButton: function (text, parent, type, classList) {
+        if (type === undefined) type = "md-filled-tonal-button";
+        const btn = this.create(type, parent, classList);
+        btn.innerHTML = text;
         return btn;
     },
     text: function (text, parent, classList) {
@@ -147,6 +152,16 @@ var UI = {
         const titleBarLayout = this.create('div', titlebar, 'window-titlebar-layout flexbox');
         const titleBarText = this.create('div', titleBarLayout, 'window-titlebar-layout-text flexbox-left');
         const titleBarButtons = this.create('div', titleBarLayout, 'window-titlebar-layout-buttons flexbox-right');
+
+        const close = UI.dangerousButton(`<md-icon>close</md-icon>`, titleBarButtons, 'md-filled-tonal-icon-button', 'win-close-btn');
+        close.addEventListener('click', function () {
+            win.remove();
+            if (module) {
+                if (module.close.type === "function") {
+                    module.close();
+                }
+            }
+        });
 
         if (title) titleBarText.innerText = title;
 
@@ -342,8 +357,7 @@ var UI = {
             for (const key in scheme.props) {
                 // fixed by AI
                 const value = scheme.props[key];
-                const val = tools.argbToRgb(value);
-                const { r, g, b, a } = tools.argbToRgb(value);
+                const { r, g, b } = tools.argbToRgb(value);
                 let font = "#fff";
                 if ((r + g + b) / 3 > 180) {
                     font = "#000";
@@ -360,26 +374,6 @@ var UI = {
             const txt = tools.argbToRgb(scheme.props.onSurface);
             UI.system.changeCSSVar('text', `rgb(${txt.r}, ${txt.g}, ${txt.b})`);
         }
-    },
-    fakemousedown: function (element) {
-        // 100% pure USDA-certified Google AI Overview
-        const mousedownEvent = new MouseEvent('mousedown', {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            button: 0
-        });
-
-        const mouseupEvent = new MouseEvent('mouseup', {
-            view: window,
-            bubbles: true,
-            cancelable: true,
-            button: 0
-        });
-        element.dispatchEvent(mousedownEvent);
-        setTimeout(function () {
-            element.dispatchEvent(mouseupEvent);
-        }, 50);
     },
     divider: function (element) {
         const el = UI.create('div', element, 'divider');

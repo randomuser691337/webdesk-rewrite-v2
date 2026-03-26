@@ -1,30 +1,11 @@
-export var name = "TextEdit";
+export var name = "LiveCSS";
 
 export async function launch(FS, UI, core) {
-    const mod = await core.loadModule('/apps/Files.app/index.js', true);
-    console.log(mod);
-    const filePicker = await mod.pickFile(FS, UI, core, { name: "TextEdit" });
-    if (filePicker !== false) {
-        editor(filePicker.path);
-    }
-}
-
-export async function editor(path, contents) {
-    const textedit = UI.window('TextEdit');
+    const textedit = UI.window('LiveCSS');
     const AceModule = await core.loadModule('/system/ace-rebuild.js', true);
     console.log(AceModule);
     const textarea = ace.edit(textedit.main.content);
-    if (contents && contents !== undefined) {
-        textarea.setValue(contents);
-    } else if (path) {
-        if (path.endsWith('.js') || path.endsWith('.js/')) {
-            textarea.session.setMode("ace/mode/javascript");
-        }
-        textarea.setValue(await FS.read(path));
-    } else {
-        textarea.placeholder = `Start typing... [New File]`;
-    }
-
+    const style = UI.create('style', document.body);
     textarea.setOptions({
         fontFamily: 'Roboto Mono',
         fontSize: "12px"
@@ -38,6 +19,10 @@ export async function editor(path, contents) {
     var menuOpen = false;
     var menuCloseFunction = false;
     var menuName = undefined;
+
+    textarea.textInput.getElement().addEventListener('keydown', function (e) {
+        style.textContent = textarea.getSession().getValue();
+    });
 
     function closeMenu() {
         menuCloseFunction(document.body);

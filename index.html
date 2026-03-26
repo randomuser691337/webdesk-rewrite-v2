@@ -13,6 +13,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
         <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap"
             rel="stylesheet">
+        <script src="https://unpkg.com/fast-average-color/dist/index.browser.min.js"></script>
     </head>
 
     <body>
@@ -308,13 +309,16 @@
                                 console.log('<i> skipping directory: ' + entries[i]);
                             } else {
                                 let contents;
-                                if ((checkFileTypes(entries[i].filename))) {
+                                const blobit = checkFileTypes(entries[i].filename);
+                                if (blobit === true) {
                                     contents = await entries[i].getData(new zip.BlobWriter());
                                     console.log(entries[i].filename, ` is a blob`);
                                 } else {
                                     contents = await entries[i].getData(new zip.TextWriter());
                                 }
-                                await FS.write("/" + entries[i].filename, contents);
+                                let type = "text";
+                                if (blobit === true) type = "blob";
+                                await FS.write("/" + entries[i].filename, contents, type);
                             }
                             i++
                             iterate();
@@ -334,6 +338,27 @@
                 await core.loadStyle('/system/styles.css', true);
                 console.log(`<i> Initializing Material UI...`);
                 await core.loadScript('/system/mui.js', true);
+
+                const img = await FS.read('/system/img/wallpaper.jpg');
+                console.log(`<i> Creating object URL from blob`);
+                const objectUrl = await URL.createObjectURL(img);
+                console.log(`<i> Trying to display image`);
+                const wallimg = UI.create('img', document.body);
+                wallimg.style = `position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: -4;
+  object-fit: cover;
+  object-position: center;`
+                wallimg.src = objectUrl;
+                wallimg.onload = () => {
+                    const fac = new FastAverageColor();
+                    const color = fac.getColor(wallimg);
+                    console.log(color);
+                    UI.system.applyTheme(color.hex, color.hex, color.dark)
+                }
 
                 function initMUI() {
                     UI.system.applyTheme('#ff0000', '#0000ff');

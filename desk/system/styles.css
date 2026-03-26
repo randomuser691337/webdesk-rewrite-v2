@@ -32,9 +32,19 @@ md-elevated-button {
     --md-elevated-button-container-shape: var(--radii-main);
 }
 
+
 body {
+    color: var(--text);
+    font-size: var(--font-size-text);
     background-color: var(--md-sys-color-surface-variant);
     font-family: "Roboto", Arial, Helvetica, sans-serif;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    padding: 0px;
+    margin: 0px;
+    overflow: hidden;
 }
 
 button,
@@ -56,6 +66,8 @@ p {
     overflow: auto;
     box-shadow: 0px 0px 15px 10px rgba(0, 0, 0, 0.1);
     z-index: 3;
+    max-width: 92%;
+    max-height: 92%;
 }
 
 .window-titlebar-layout-text {
@@ -175,7 +187,7 @@ textarea:focus {
     align-items: center;
 }
 
-.material-symbols-outlined {
+.symbol-style-files {
     font-size: 20px !important;
     font-weight: 400 !important;
 }
@@ -256,10 +268,20 @@ textarea:focus {
 }
 
 .titlebar-button {
-    --md-text-button-container-height: var(--padding-super-small);
-    --md-text-button-horizontal-padding: var(--padding-super-small);
-    /* --_leading-space: 3px;
-    --_trailing-space: 3px; */
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: var(--radii-second);
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    background-color: transparent;
+    padding: 6px;
+    font-size: var(--small-fz);
+    color: var(--text);
+}
+
+.titlebar-button:hover {
+    background-color: rgba(var(--accent), 0.08);
 }
 
 .full-width {
@@ -273,4 +295,10 @@ textarea:focus {
     height: 1px;
     margin: 0px;
     padding: 0px;
+}
+
+.win-close-btn {
+    --md-filled-tonal-icon-button-icon-size: 18px;
+    --md-filled-tonal-icon-button-container-width: 24px;
+    --md-filled-tonal-icon-button-container-height: 24px;
 }
