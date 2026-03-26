@@ -25,7 +25,7 @@ var UI = {
             if (core.debug === true) console.log(TextEditor);
             TextEditor.editor(path);
         } else {
-            
+
         }
     },
     list: {
@@ -134,7 +134,6 @@ var UI = {
                 - main: Window / it's content except titlebar
                     - main.window: Root window element
                     - main.content: Content element, append buttons/elements into this
-
             - To create a window, for example:
                 const win = UI.window('Example window', module); // close buttons will only remove the window, not the module if the module param is undefined
                 UI.text('It works!', win.main.content);
@@ -211,6 +210,8 @@ var UI = {
         }
 
         function dragStart(e) {
+            if (e.target.tagName.toLowerCase().includes('button')) return;
+
             e.preventDefault();
             const p = getPoint(e);
 
@@ -247,10 +248,12 @@ var UI = {
             document.removeEventListener("touchend", dragEnd);
         }
     },
-    contextMenu: function (event) {
+    contextMenu: function (event, exempt, closeCallback) {
         // Used AI to debug
-        /* contextMenu(event) documentation
+        /* contextMenu(event, exempt) documentation
             - contextMenu event parameter: Needs to include { event.clientX, event.clientY }
+            - contextMenu exempt parameter: Array. If an element in the exempt array is interacted with, the menu won't close.
+            - contextMenu closeCallback parameter: A function to run once the menu closes.
             - contextMenu returns { menu, finish(), and closeMenu(event) }
                 - menu: The actual context menu element. Append buttons/elements to this
                 - finish(): Adds close listeners and positions the menu. Use after adding your elements
@@ -292,6 +295,17 @@ var UI = {
 
         function closeMenu(e) {
             if (!el.contains(e.target)) {
+                if (exempt) {
+                    for (let item of exempt) {
+                        if (item.contains(e.target)) {
+                            console.log(`<i> deflect!`);
+                            return;
+                        }
+                    }
+                }
+                if (typeof closeCallback === 'function') {
+                    closeCallback();
+                }
                 el.remove();
                 document.body.removeEventListener('mousedown', closeMenu);
             }
@@ -315,7 +329,6 @@ var UI = {
                 },
             ]);
 
-
             let scheme = theme.schemes.light;
             if (dark === true) {
                 scheme = theme.schemes.dark;
@@ -328,8 +341,14 @@ var UI = {
             console.log(theme.schemes)
             for (const key in scheme.props) {
                 // fixed by AI
-                const value = scheme[key];
-                console.log(key, value, tools.argbToRgb(value));
+                const value = scheme.props[key];
+                const val = tools.argbToRgb(value);
+                const { r, g, b, a } = tools.argbToRgb(value);
+                let font = "#fff";
+                if ((r + g + b) / 3 > 180) {
+                    font = "#000";
+                }
+                console.log(`%c${key}: ${value}, RGB: ${r}, ${g}, ${b}`, `background-color: rgba(${r}, ${g}, ${b}); color: ${font}; border-radius: 5px; padding: 3px;`);
             }
 
             const ui1 = tools.argbToRgb(scheme.props.surface);
@@ -341,6 +360,30 @@ var UI = {
             const txt = tools.argbToRgb(scheme.props.onSurface);
             UI.system.changeCSSVar('text', `rgb(${txt.r}, ${txt.g}, ${txt.b})`);
         }
+    },
+    fakemousedown: function (element) {
+        // 100% pure USDA-certified Google AI Overview
+        const mousedownEvent = new MouseEvent('mousedown', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            button: 0
+        });
+
+        const mouseupEvent = new MouseEvent('mouseup', {
+            view: window,
+            bubbles: true,
+            cancelable: true,
+            button: 0
+        });
+        element.dispatchEvent(mousedownEvent);
+        setTimeout(function () {
+            element.dispatchEvent(mouseupEvent);
+        }, 50);
+    },
+    divider: function (element) {
+        const el = UI.create('div', element, 'divider');
+        return el;
     }
 }
 

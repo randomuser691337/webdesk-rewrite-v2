@@ -1,7 +1,7 @@
 :root {
     --accent: 30, 30, 225;
     --ui-1: 250, 250, 250;
-    --ui-1-border-color: var(--md-sys-color-primary);
+    --ui-1-border-color: var(--md-sys-color-inverse-primary);
     --ui-2: 230, 230, 230;
     --ui-surface-contents-no-color: 0, 0, 0;
     --text: #000;
@@ -16,11 +16,29 @@
     --small-fz: 14px;
 }
 
-body {
-    background-color: var(--md-sys-color-inverse-tertiary);
+md-outlined-button {
+    --md-outlined-button-container-shape: var(--radii-main);
 }
 
-button, p, div {
+md-text-button {
+    --md-text-button-container-shape: var(--radii-main);
+}
+
+md-filled-button {
+    --md-filled-button-container-shape: var(--radii-main);
+}
+
+md-elevated-button {
+    --md-elevated-button-container-shape: var(--radii-main);
+}
+
+body {
+    background-color: var(--md-sys-color-surface-variant);
+    font-family: "Roboto", Arial, Helvetica, sans-serif;
+}
+
+button,
+p {
     font-family: "Roboto", Arial, Helvetica, sans-serif;
     font-size: var(--main-fz);
     color: var(--text);
@@ -38,6 +56,10 @@ button, p, div {
     overflow: auto;
     box-shadow: 0px 0px 15px 10px rgba(0, 0, 0, 0.1);
     z-index: 3;
+}
+
+.window-titlebar-layout-text {
+    color: var(--text);
 }
 
 .window-titlebar {
@@ -91,6 +113,7 @@ textarea:focus {
     width: 200px;
     height: auto;
     z-index: 99999999;
+    border: 1px solid var(--ui-1-border-color);
 }
 
 .list-button {
@@ -104,6 +127,7 @@ textarea:focus {
     padding: 6px;
     font-family: "Roboto", Arial, Helvetica, sans-serif;
     font-size: 16px;
+    color: var(--text);
 }
 
 .list-button:hover {
@@ -229,4 +253,24 @@ textarea:focus {
     background-color: rgba(var(--accent), 0.5);
     border-radius: var(--radii-second);
     padding: var(--padding-normal);
+}
+
+.titlebar-button {
+    --md-text-button-container-height: var(--padding-super-small);
+    --md-text-button-horizontal-padding: var(--padding-super-small);
+    /* --_leading-space: 3px;
+    --_trailing-space: 3px; */
+}
+
+.full-width {
+    width: 100%;
+}
+
+.divider {
+    width: 100%;
+    box-sizing: border-box;
+    background-color: rgba(var(--ui-surface-contents-no-color), 0.1);
+    height: 1px;
+    margin: 0px;
+    padding: 0px;
 }
