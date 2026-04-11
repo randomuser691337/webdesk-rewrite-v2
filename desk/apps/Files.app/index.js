@@ -1,4 +1,4 @@
-export async function launch(FS, UI, core) {
+export async function launch(FS, UI, core, path) {
     const win = UI.window('Files');
     win.main.window.style.height = "300px";
     win.main.window.style.width = "300px";
@@ -76,7 +76,7 @@ export async function launch(FS, UI, core) {
                 menu.finish();
             });
 
-            btn.addEventListener('click', async function () {
+            btn.addEventListener('dblclick', async function () {
                 if (file.kind === "directory") {
                     await nav(file.path);
                 } else {
@@ -86,7 +86,11 @@ export async function launch(FS, UI, core) {
         });
     }
 
-    nav('/');
+    if (typeof path === "string") {
+        nav(path);
+    } else {
+        nav('/');
+    }
 }
 
 export async function pickFile(FS, UI, core, parameters) {
@@ -95,6 +99,10 @@ export async function pickFile(FS, UI, core, parameters) {
     - parameters.name
         - must be set
         - app name
+    - parameters.type
+        - if not set, falls back to opening an existing file
+        - "new" - create new file
+        - "folder" - pick a folder
     */
     return new Promise((resolve, reject) => {
         const win = UI.window('File Picker - ' + parameters.name);
@@ -155,7 +163,7 @@ export async function pickFile(FS, UI, core, parameters) {
                     menu.finish();
                 });
 
-                btn.addEventListener('click', function () {
+                btn.addEventListener('dblclick', function () {
                     if (file.kind === "directory") {
                         nav(file.path);
                     } else {

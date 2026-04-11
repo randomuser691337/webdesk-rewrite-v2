@@ -1,6 +1,15 @@
 var windowArray = []
 
 var UI = {
+    math: {
+        calcRes: function (wPercent, hPercent) {
+            // Made by Claude
+            // If window res is 1920x1080 and you run UI.math.calcRes(80, 80), calcRes returns { w: 1536, h: 864 }
+            const w = window.innerWidth * (wPercent / 100);
+            const h = window.innerHeight * (hPercent / 100);
+            return { w: Math.round(w), h: Math.round(h) };
+        },
+    },
     leftRightLayout: function (classList, parent) {
         const container = this.create('div', parent, `flexbox ${classList}`);
         const left = this.create('div', container, 'flexbox-left');
@@ -98,7 +107,11 @@ var UI = {
         */
         const el = document.createElement(elType);
         el.classList = classList;
-        parent.appendChild(el);
+        if (parent instanceof HTMLElement) {
+            parent.appendChild(el);
+        } else {
+            console.log(el + " has no valid parent!");
+        }
         return el;
     },
     container: function (options, parent, classList) {
@@ -353,7 +366,7 @@ var UI = {
             }
 
             MaterialUI.applyTheme(theme, { target: document.body, dark });
-            console.log(theme.schemes)
+            console.log(theme.schemes);
             for (const key in scheme.props) {
                 // fixed by AI
                 const value = scheme.props[key];
@@ -371,7 +384,7 @@ var UI = {
             UI.system.changeCSSVar('ui-2', `${ui2.r}, ${ui2.g}, ${ui2.b}`);
             const accent = tools.argbToRgb(scheme.props.primary);
             UI.system.changeCSSVar('accent', `${accent.r}, ${accent.g}, ${accent.b}`);
-            const txt = tools.argbToRgb(scheme.props.onSurface);
+            const txt = tools.argbToRgb(scheme.props.onPrimaryContainer);
             UI.system.changeCSSVar('text', `rgb(${txt.r}, ${txt.g}, ${txt.b})`);
         }
     },

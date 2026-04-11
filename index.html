@@ -98,6 +98,8 @@
             },
             erase: function (confirmation, uID) {
                 return new Promise((resolve, reject) => {
+                    console.log(`<i> Fully removing workers...`);
+                    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
                     opID++;
                     promises[opID] = { resolve, reject };
                     WFS.postMessage({ opID, op: "erase", contents: confirmation });
@@ -321,13 +323,14 @@
                                 await FS.write("/" + entries[i].filename, contents, type);
                             }
                             i++
-                            iterate();
+                            await iterate();
                         }
                     }
-                    iterate();
+                    await iterate();
                 }
 
                 await reader.close();
+                console.log('<i> Install successful');
                 await FS.write('/system/version', version);
                 await init();
             }
@@ -345,10 +348,8 @@
                 console.log(`<i> Trying to display image`);
                 const wallimg = UI.create('img', document.body);
                 wallimg.style = `position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
   z-index: -4;
   object-fit: cover;
   object-position: center;`
@@ -357,19 +358,13 @@
                     const fac = new FastAverageColor();
                     const color = fac.getColor(wallimg);
                     console.log(color);
+                    document.adoptedStyleSheets.push(MaterialUI.typescaleStyles.styleSheet);
                     UI.system.applyTheme(color.hex, color.hex, color.dark)
                 }
 
-                function initMUI() {
-                    UI.system.applyTheme('#ff0000', '#0000ff');
-                    document.adoptedStyleSheets.push(MaterialUI.typescaleStyles.styleSheet);
-                }
-
-                initMUI();
-
                 const Launcher = await core.loadModule('/system/apps/Launcher.app/index.js', true);
                 const editor = await Launcher.launch(FS, UI, core);
-                core.loadScript(await FS.read('/system/init.js'));
+                core.loadScript('/system/init.js', true);
             }
 
             // FORCEUPDATE flag

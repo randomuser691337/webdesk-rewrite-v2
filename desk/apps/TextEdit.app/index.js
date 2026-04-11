@@ -15,12 +15,14 @@ export async function editor(path, contents) {
     console.log(AceModule);
     const textarea = ace.edit(textedit.main.content);
     if (contents && contents !== undefined) {
-        textarea.setValue(contents);
+        textarea.setValue(contents, -1);
+        textarea.session.getUndoManager().reset();
     } else if (path) {
         if (path.endsWith('.js') || path.endsWith('.js/')) {
             textarea.session.setMode("ace/mode/javascript");
         }
-        textarea.setValue(await FS.read(path));
+        textarea.setValue(await FS.read(path), -1);
+        textarea.session.getUndoManager().reset();
     } else {
         textarea.placeholder = `Start typing... [New File]`;
     }
@@ -128,6 +130,12 @@ export async function editor(path, contents) {
             const findbtn = UI.button('Find', ctx.menu, 'button', 'list-button');
             findbtn.addEventListener('mouseup', async function () {
                 textarea.execCommand('find');
+                closeMenu();
+            });
+
+            const replacebtn = UI.button('Replace', ctx.menu, 'button', 'list-button');
+            replacebtn.addEventListener('mouseup', async function () {
+                currentEditor.execCommand('replace');
                 closeMenu();
             });
 

@@ -59,6 +59,7 @@ export async function launcher(FS, UI, core, shelfRect) {
                 if (file.kind === "directory") {
                     const app = await core.loadModule(file.path + "/index.js", true);
                     const editor = await app.launch(FS, UI, core);
+                    win.remove();
                 }
             });
         });
