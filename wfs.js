@@ -18,10 +18,10 @@ var FS = {
     eraseall: async function (confirmation) {
         // confirmation MUST be "I understand all data in WFS will be destroyed";
         if (confirmation === "I understand all data in WFS will be destroyed") {
-            console.log(`<!> ERASING WFS...`);
+            // console.log(`<!> ERASING WFS...`);
             opfsRoot.removeEntry('handles', { recursive: true });
             opfsRoot.removeEntry('objects', { recursive: true });
-            console.log(`<!> Erase success`);
+            // console.log(`<!> Erase success`);
             return true;
         } else {
             return false;
@@ -53,7 +53,7 @@ var FS = {
                 content = await data.text();
             }
             if (returnAllData === true) {
-                return { fileHandle: file, isBlob: blob, content}
+                return { fileHandle: file, isBlob: blob, content }
             } else {
                 return content;
             }
@@ -69,10 +69,10 @@ var FS = {
 
         try {
             await current.removeEntry(nameToDelete);
-            console.log(`Deleted: ${nameToDelete}`);
+            // console.log(`Deleted: ${nameToDelete}`);
             return true;
         } catch (err) {
-            console.log(`Failed to delete '${nameToDelete}':`, err);
+            // console.log(`Failed to delete '${nameToDelete}':`, err);
             return false;
         }
     },
@@ -91,7 +91,7 @@ var FS = {
                     FS.switchdelete(path, metaDir);
                     return uid;
                 } catch (error) {
-                    console.log(error);
+                    // console.log(error);
                     return false;
                 }
             }
@@ -104,8 +104,46 @@ var FS = {
                 return true;
             }
         } catch (error) {
-            console.log(error);
+            // console.log(error);
             return false;
+        }
+    },
+    checkType: async function (path) {
+        // AI, modified by me
+        const parts = path.split("/").filter(Boolean);
+        if (parts.length === 0) {
+            try {
+                await metaDir.getDirectoryHandle("", { create: false });
+                return 'directory';
+            } catch (err) {
+                return 'not found';
+            }
+        }
+
+        let current = metaDir;
+        for (let i = 0; i < parts.length - 1; i++) {
+            current = await current.getDirectoryHandle(parts[i]);
+        }
+
+        const nameToCheck = parts.at(-1);
+
+        try {
+            await current.getDirectoryHandle(nameToCheck, { create: false });
+            return 'directory';
+        } catch (err) {
+            try {
+                const file = await current.getFileHandle(nameToCheck, { create: false });
+                const data = await file.getFile();
+                const uid = await data.text();
+                if (uid.endsWith('_text')) {
+                    return 'text';
+                } else {
+                    return 'blob';
+                }
+            } catch (err2) {
+                console.log(err2);
+                return 'not found';
+            }
         }
     },
     walkPath: async function (path, create = false) {
@@ -135,7 +173,7 @@ var FS = {
             FS.walkPath(path, true);
             return true;
         } catch (error) {
-            console.log(error);
+            // console.log(error);
             return false;
         }
     },
@@ -173,7 +211,7 @@ var FS = {
 
             let fileuID = await checkOld();
 
-            console.log(fileuID);
+            // console.log(fileuID);
 
             if (kind === "blob") {
                 fileuID = fileuID + "_blob";
@@ -184,7 +222,7 @@ var FS = {
                 fileuID = fileuID + "_text";
             }
 
-            console.log(`<i> Finished write preparation`);
+            // console.log(`<i> Finished write preparation`);
 
             const metaHandler = await this.switchwrite(path, fileuID, 'text', metaDir);
             const dataHandler = await this.switchwrite(fileuID, contents, kind, dataDir);
@@ -196,19 +234,19 @@ var FS = {
 }
 
 addEventListener('message', async event => {
-    console.log(event.data);
+    // console.log(event.data);
     if (event.data.op === "init") {
         try {
             await init();
         } catch (error) {
-            console.log(`<!> Filesystem init failed. Details: `, event.data, error);
+            // console.log(`<!> Filesystem init failed. Details: `, event.data, error);
         }
     } else if (event.data.op === "write") {
         try {
             const wr = await FS.write(event.data.path, event.data.contents, event.data.type);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
         } catch (error) {
-            console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
+            // console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
 
         }
@@ -217,7 +255,7 @@ addEventListener('message', async event => {
             const wr = await FS.delete(event.data.path);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
         } catch (error) {
-            console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
+            // console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
 
         }
@@ -226,7 +264,7 @@ addEventListener('message', async event => {
             const wr = await FS.mkdir(event.data.path);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
         } catch (error) {
-            console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
+            // console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
 
         }
@@ -234,25 +272,29 @@ addEventListener('message', async event => {
         try {
             let wr;
             if (event.data.contents) {
-                console.log('<i> preferring uid');
+                // console.log('<i> preferring uid');
                 wr = await FS.read(event.data.contents, true, event.data.type);
             } else {
                 wr = await FS.read(event.data.path, undefined, event.data.type);
             }
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
         } catch (error) {
-            console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
-            console.log(error);
+            // console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
+            // console.log(error);
             if (error.name.includes('NotFound')) {
                 self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: false });
             }
         }
+    } else if (event.data.op === "checkType") {
+        console.log(event.data);
+        const typeofFile = await FS.checkType(event.data.path);
+        self.postMessage({ opID: event.data.opID, op: event.data.op, contents: typeofFile, error: undefined });
     } else if (event.data.op === "erase") {
         try {
             let wr = await FS.eraseall(event.data.contents);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
         } catch (error) {
-            console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
+            // console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
         }
     } else if (event.data.op === "ls") {
@@ -260,7 +302,7 @@ addEventListener('message', async event => {
             let wr = await FS.walkPath(event.data.path);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: wr, error: undefined });
         } catch (error) {
-            console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
+            // console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
         }
     }

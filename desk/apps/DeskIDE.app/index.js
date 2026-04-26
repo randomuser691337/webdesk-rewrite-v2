@@ -5,18 +5,20 @@ export async function launch(FS, UI, core, path) {
     const window = UI.window('DeskIDE');
     window.main.content.style = "display: flex; padding: 0px;";
     const sidebar = UI.create('div', window.main.content, 'window-split-sidebar');
+    sidebar.style.width = UI.math.calcRes(15, 15).w + "px";
     let content;
     function createContentBox() {
         content = UI.create('div', window.main.content, 'window-split-content');
         content.style.padding = "0px";
     }
     window.main.window.style.overflow = "hidden";
+    window.titlebar.main.style.padding = "4px";
     const calc = UI.math.calcRes(80, 80);
     window.main.window.style.height = calc.h + "px";
     window.main.window.style.width = calc.w + "px";
     const AceModule = await core.loadModule('/system/ace-rebuild.js', true);
     function returnBtnStyles() {
-        return "font-family: 'Roboto'; background: transparent; font-size: 12px; border: none; display: block; box-sizing: border-box; text-align: left; cursor: pointer;";
+        return "font-family: 'Roboto'; background: transparent; font-size: var(--small-fz); border: none; display: block; box-sizing: border-box; text-align: left; cursor: pointer;";
     }
     // Original version of buildFSNode written by me; new version corrected/rebuilt by Claude and modified by me.
     async function buildFSNode(path, el) {
@@ -38,7 +40,7 @@ export async function launch(FS, UI, core, path) {
 
             const open = UI.button('Open Folder', ctx.menu, 'button', 'list-button');
             open.addEventListener('mouseup', async function () {
-                ctx.closeMenu(document.body);
+                closeMenu();
                 let thing = await core.loadModule('/apps/DeskIDE.app/index.js', true);
                 await thing.launch(FS, UI, core, path);
                 window.main.window.remove();
@@ -46,24 +48,24 @@ export async function launch(FS, UI, core, path) {
 
             const newWindow = UI.button('Open Folder in New Window', ctx.menu, 'button', 'list-button');
             newWindow.addEventListener('mouseup', async function () {
-                ctx.closeMenu(document.body);
+                closeMenu();
                 let thing = await core.loadModule('/apps/DeskIDE.app/index.js', true);
                 await thing.launch(FS, UI, core, path);
             });
 
             const fileTextEditbtn = UI.button('Open Folder in Files', ctx.menu, 'button', 'list-button');
             fileTextEditbtn.addEventListener('mouseup', async function () {
-                ctx.closeMenu(document.body);
+                closeMenu();
                 let thing = await core.loadModule('/apps/Files.app/index.js', true);
                 await thing.launch(FS, UI, core, path);
             });
 
             const button = UI.button('Delete', ctx.menu, 'button', 'list-button hidden');
             button.addEventListener('mouseup', async function () {
-                ctx.closeMenu(document.body);
+                closeMenu();
                 await FS.rm(path);
             });
-        })
+        });
 
         const childContainer = UI.create('div', container);
         childContainer.style.paddingLeft = "4px";
@@ -124,11 +126,18 @@ export async function launch(FS, UI, core, path) {
 
         currentEditor.setOptions({
             fontFamily: 'Roboto Mono',
-            fontSize: "12px"
+            fontSize: await FS.read('EditorTextSize')
+        });
+
+        currentEditor.commands.addCommand({
+            name: 'Save',
+            bindKey: { win: 'Ctrl-S', mac: 'Command-S' },
+            exec: function (currentEditor) {
+
+            }
         });
 
         window.titlebar.text.innerHTML = "";
-        window.titlebar.main.style.padding = "var(--padding-small)";
         const buttonContainer = UI.container(undefined, window.titlebar.text, 'column-button-container full-width');
         var menuOpen = false;
         var menuCloseFunction = false;
@@ -168,6 +177,9 @@ export async function launch(FS, UI, core, path) {
             },
             redo: function () {
                 currentEditor.getSession().getUndoManager().redo();
+            },
+            save: async function (path, aceEditor) {
+                await FS.write(path, aceEditor.getSession().getValue(), 'text');
             }
         }
 
@@ -187,6 +199,7 @@ export async function launch(FS, UI, core, path) {
 
                 const newWindow = UI.button('New Window', ctx.menu, 'button', 'list-button');
                 newWindow.addEventListener('mouseup', async function () {
+                    closeMenu();
                     let thing = await core.loadModule('/apps/DeskIDE.app/index.js', true);
                     await thing.launch(FS, UI, core);
                 });
@@ -195,6 +208,7 @@ export async function launch(FS, UI, core, path) {
 
                 const filebtn = UI.button('Open File...', ctx.menu, 'button', 'list-button');
                 filebtn.addEventListener('mouseup', async function () {
+                    closeMenu();
                     const mod = await core.loadModule('/apps/Files.app/index.js', true);
                     const filePicker = await mod.pickFile(FS, UI, core, { name: "DeskIDE" });
                     if (filePicker !== false) {
@@ -204,6 +218,7 @@ export async function launch(FS, UI, core, path) {
 
                 const fileTextEditbtn = UI.button('Open File in TextEdit...', ctx.menu, 'button', 'list-button');
                 fileTextEditbtn.addEventListener('mouseup', async function () {
+                    closeMenu();
                     let thing = await core.loadModule('/apps/TextEdit.app/index.js', true);
                     await thing.launch(FS, UI, core);
                 });
@@ -212,13 +227,13 @@ export async function launch(FS, UI, core, path) {
 
                 const button = UI.button('Save', ctx.menu, 'button', 'list-button');
                 button.addEventListener('mouseup', async function () {
-                    await FS.write(path, currentEditor.getSession().getValue(), 'text');
                     closeMenu();
+                    await editor.save(path, currentEditor);
                 });
 
                 const saver = UI.button('Save & restart', ctx.menu, 'button', 'list-button');
                 saver.addEventListener('mouseup', async function () {
-                    await FS.write(path, currentEditor.getSession().getValue(), 'text');
+                    await editor.save(path, currentEditor);
                     await window.location.reload();
                 });
 
@@ -298,8 +313,16 @@ export async function launch(FS, UI, core, path) {
 
                 const restartDeskIDE = UI.button('Restart DeskIDE', ctx.menu, 'button', 'list-button');
                 restartDeskIDE.addEventListener('mouseup', async function () {
+                    closeMenu();
                     window.main.window.remove();
                     let thing = await core.loadModule('/apps/DeskIDE.app/index.js', true);
+                    await thing.launch(FS, UI, core);
+                });
+
+                const LiveCSSbtn = UI.button('LiveCSS', ctx.menu, 'button', 'list-button');
+                LiveCSSbtn.addEventListener('mouseup', async function () {
+                    closeMenu();
+                    let thing = await core.loadModule('/apps/DeskIDE.app/tools/LiveCSS.app/index.js', true);
                     await thing.launch(FS, UI, core);
                 });
 

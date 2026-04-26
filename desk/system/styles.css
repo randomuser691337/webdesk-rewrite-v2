@@ -14,6 +14,10 @@
     --padding-big: 15px;
     --main-fz: 16px;
     --small-fz: 14px;
+    --blur-main: 12px;
+    --anim-speed-fast: 0.133s;
+    --anim-speed-med: 0.2s;
+    --anim-speed-slow: 0.3s;
 }
 
 md-outlined-button {
@@ -126,6 +130,11 @@ textarea:focus {
     height: auto;
     z-index: 99999999;
     border: 1px solid var(--ui-1-border-color);
+    font-size: var(--small-fz) !important;
+}
+
+.context-menu * {
+    font-size: var(--small-fz) !important;
 }
 
 .list-button {
@@ -138,8 +147,11 @@ textarea:focus {
     background-color: transparent;
     padding: 6px;
     font-family: "Roboto", Arial, Helvetica, sans-serif;
-    font-size: var(--small-fz);
     color: var(--text);
+}
+
+.small-text {
+    font-size: var(--small-fz);
 }
 
 .list-button:hover {
@@ -345,4 +357,66 @@ textarea:focus {
 
 .hidden {
     display: none;
+}
+
+@keyframes fade-in {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.line-wobble,
+.line-wobble::after {
+    border-radius: calc(var(--uib-line-weight)/ 2)
+}
+
+.line-wobble::after,
+.line-wobble::before {
+    content: '';
+    height: 100%;
+    width: 100%;
+    background-color: rgba(var(--acc), 1.0);
+}
+
+.line-wobble {
+    --uib-size: 120px;
+    --uib-speed: 1.55s;
+    --uib-color: rgba(var(--acc), 0.5);
+    --uib-line-weight: 6px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--uib-line-weight);
+    width: var(--uib-size);
+    overflow: hidden;
+    transform: translate3d(0, 0, 0)
+}
+
+.line-wobble::before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: .2
+}
+
+.line-wobble::after {
+    animation: wobble var(--uib-speed) ease-in-out infinite;
+    transform: translateX(-90%)
+}
+
+@keyframes wobble {
+
+    0%,
+    100% {
+        transform: translateX(-90%)
+    }
+
+    50% {
+        transform: translateX(90%)
+    }
 }

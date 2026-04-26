@@ -27,6 +27,10 @@ var UI = {
         return el;
     },
     openFile: async function (path, type) {
+        if (type === undefined) {
+            type = await FS.checkType(path);
+        }
+
         if (type === "text") {
             const editorApp = await set.read('WDDefaultEditor');
             if (core.debug === true) console.log(editorApp);
@@ -138,6 +142,17 @@ var UI = {
         const txt = this.create('div', parent, classList + " text");
         txt.innerText = text;
         return txt;
+    },
+    input: function (parent, placeholder, type, classList) {
+        var input = this.create("md-outlined-text-field", parent, classList);
+        input.label = placeholder;
+        if (type) {
+            input.type = type;
+        }
+        return input;
+    },
+    remove: function (el) {
+        el.remove();
     },
     window: function (title, module) {
         /* window(title, module) documentation
