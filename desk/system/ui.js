@@ -1,6 +1,14 @@
 var windowArray = []
 
 var UI = {
+    animSpeed: {
+        slow: 0.3,
+        med: 0.2,
+        fast: 0.13,
+    },
+    systemElements: {
+        taskbarAppButtonList: undefined,
+    },
     math: {
         calcRes: function (wPercent, hPercent) {
             // Made by Claude
@@ -9,6 +17,80 @@ var UI = {
             const h = window.innerHeight * (hPercent / 100);
             return { w: Math.round(w), h: Math.round(h) };
         },
+    },
+    anims: {
+        crossFade: function (el1, el2, El2DisplayVarCSS) {
+            el2.style.display = "none";
+            return Animate(el1, { opacity: [1, 0] }, { duration: UI.animSpeed.fast }).then(function () {
+                el1.style.display = "none";
+                el2.style.display = El2DisplayVarCSS || "block";
+                return Animate(el2, { opacity: [0, 1] }, { duration: UI.animSpeed.fast });
+            });
+        },
+        fadeIn: function (el) {
+            return Animate(el, { opacity: [0, 1] }, { duration: UI.animSpeed.med });
+        },
+        fadeOut: function (el) {
+            return Animate(el, { opacity: [1, 0] }, { duration: UI.animSpeed.med });
+        },
+        fadeOutRemove: function (el) {
+            return Animate(el, { opacity: [1, 0] }, { duration: UI.animSpeed.med }).then(function () {
+                el.style.display = "none";
+            });
+        }
+    },
+    initialize: async function () {
+        const img = await FS.read(FS.normalizeUserPath('config/wallpaper'));
+        console.log(`<i> Creating object URL from blob`);
+        const objectUrl = await URL.createObjectURL(img);
+        console.log(`<i> Trying to display image`);
+        if (document.getElementById('wallimg-webdesk-desktop')) {
+            document.getElementById('wallimg-webdesk-desktop').remove();
+        }
+        const wallimg = UI.create('img', document.body);
+        wallimg.id = "wallimg-webdesk-desktop";
+        wallimg.style = `position: fixed;
+  width: 100%;
+  height: 100%;
+  z-index: -4;
+  object-fit: cover;
+  object-position: center;`
+        wallimg.src = objectUrl;
+        wallimg.onload = () => {
+            const fac = new FastAverageColor();
+            const color = fac.getColor(wallimg);
+            console.log(color);
+            document.adoptedStyleSheets.push(MaterialUI.typescaleStyles.styleSheet);
+            set.write('material-hex', color.hex);
+            UI.system.applyTheme(color.hex, color.hex, color.isDark);
+        }
+    },
+    uploadFileFromBrowser: async function () {
+        return new Promise((resolve, reject) => {
+            const input = UI.create('input', document.body, 'hide');
+            input.type = "file";
+            input.addEventListener("change", async function () {
+                const isImage = this.files[0].type.startsWith("image");
+                const content = isImage ? this.files[0] : await this.files[0].text();
+                resolve({ isImage: isImage, file: this.files[0], content: content });
+            });
+            input.click();
+        })
+    },
+    reorg: function (element) {
+        const buttons = Array.from(element.querySelectorAll('button'));
+        buttons.sort((a, b) => a.textContent.localeCompare(b.textContent));
+        element.innerHTML = '';
+        let currentLetter = '';
+
+        buttons.forEach(button => {
+            const firstLetter = button.textContent.charAt(0).toUpperCase();
+            if (firstLetter !== currentLetter) {
+                currentLetter = firstLetter;
+            }
+
+            element.appendChild(button);
+        });
     },
     leftRightLayout: function (classList, parent) {
         const container = this.create('div', parent, `flexbox ${classList}`);
@@ -154,11 +236,12 @@ var UI = {
     remove: function (el) {
         el.remove();
     },
-    window: function (title, module) {
+    window: function (title, module, closeModuleWithWindow) {
         /* window(title, module) documentation
             - window title parameter: Requires a name for the window title
             - window module parameter: Your app's module, to end when the window is closed (optional)
-            - window(title, module) returns:
+            - window closeModuleWithWindow parameter: If true, module will be closed with the window when close() is called, unless close(removeModule) is set to false
+            - window(title, module, closeModuleWithWindow) returns:
                 - titlebar: The titlebar's elements
                     - titlebar.main: Titlebar's root element
                     - titleBar.layout: The layout element for the titlebar's text/buttons
@@ -167,35 +250,73 @@ var UI = {
                 - main: Window / it's content except titlebar
                     - main.window: Root window element
                     - main.content: Content element, append buttons/elements into this
+                - finish: Function to finish creating the window (REQUIRED!)
+                - close(removeModule): Destroys the window, and any elements associated with it.
+                    - removeModule (true, false): If true and module is provided, it will remove the window and close the module with module.close(). If false, the module will NOT be closed, no matter what.
             - To create a window, for example:
                 const win = UI.window('Example window', module); // close buttons will only remove the window, not the module if the module param is undefined
                 UI.text('It works!', win.main.content);
                 const btn = UI.button("Log window to console", win.main.content, 'md-outlined-button');
                 btn.addEventListener('click', function () { console.log(win); });
-        
+                win.finish();
         */
 
         const win = this.create('div', document.body, 'window');
+        win.style.display = "none";
         const titlebar = this.create('div', win, 'window-titlebar');
         const titleBarLayout = this.create('div', titlebar, 'window-titlebar-layout flexbox');
         const titleBarText = this.create('div', titleBarLayout, 'window-titlebar-layout-text flexbox-left');
         const titleBarButtons = this.create('div', titleBarLayout, 'window-titlebar-layout-buttons flexbox-right');
+        var minimized = false;
 
-        const close = UI.dangerousButton(`<md-icon>close</md-icon>`, titleBarButtons, 'md-filled-tonal-icon-button', 'win-close-btn');
-        close.addEventListener('click', function () {
-            win.remove();
-            if (module) {
-                if (module.close.type === "function") {
+        function generateShelfButton() {
+            const btn = UI.button(title, UI.systemElements.taskbarAppButtonList, 'md-filled-button');
+            btn.addEventListener('click', function () {
+                if (minimized === false) {
+                    
+                }
+            });
+            return btn;
+        }
+
+        function minimize(removeModule) {
+            const calc = win.getBoundingClientRect();
+            Animate(win, { scale: [1.0, 0.7], opacity: [1, 0] }, { ease: "easeInOut", duration: UI.animSpeed.fast }).then(() => win.remove());
+            if (module && ((removeModule === true || closeModuleWithWindow === true) && removeModule !== false)) {
+                if (typeof module.close === "function") {
                     module.close();
                 }
             }
+        }
+
+        function close(removeModule) {
+            const calc = win.getBoundingClientRect();
+            Animate(win, { scale: [1.0, 0.7], opacity: [1, 0] }, { ease: "easeInOut", duration: UI.animSpeed.fast }).then(() => win.remove());
+            if (module && ((removeModule === true || closeModuleWithWindow === true) && removeModule !== false)) {
+                if (typeof module.close === "function") {
+                    module.close();
+                }
+            }
+        }
+
+        const closeBtn = UI.dangerousButton(`<md-icon>close</md-icon>`, titleBarButtons, 'md-filled-tonal-icon-button', 'window-mgmt-button');
+        closeBtn.addEventListener('click', function () {
+            close();
         });
 
         if (title) titleBarText.innerText = title;
 
         const content = this.create('div', win, 'window-content');
         UI.registerDrag(win, titlebar);
-        return { "titlebar": { "main": titlebar, "layout": titleBarLayout, "buttons": titleBarButtons, "text": titleBarText }, "main": { "window": win, "content": content } }
+
+        function finish() {
+            win.style.display = "flex";
+            win.style.left = (window.innerWidth - win.getBoundingClientRect().width) / 2 + "px";
+            win.style.top = (window.innerHeight - win.getBoundingClientRect().height) / 2 + "px";
+            Animate(win, { scale: [0.7, 1], opacity: [0, 1] }, { ease: "easeInOut", duration: UI.animSpeed.fast });
+        }
+
+        return { finish, close, "titlebar": { "main": titlebar, "layout": titleBarLayout, "buttons": titleBarButtons, "text": titleBarText }, "main": { "window": win, "content": content } }
     },
     registerDrag: function (elmnt, dragHandle) {
         console.log(windowArray);
@@ -281,12 +402,19 @@ var UI = {
             elmnt.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
         }
 
-        function dragEnd() {
+        function dragEnd(e) {
+            if (!dragging) return;
             dragging = false;
+
+            const p = getPoint(e);
+            elmnt.style.left = (parseFloat(elmnt.style.left) || 0) + currentX + 'px';
+            elmnt.style.top = (parseFloat(elmnt.style.top) || 0) + currentY + 'px';
+            elmnt.style.transform = '';
+            currentX = 0;
+            currentY = 0;
 
             document.removeEventListener("mousemove", dragMove);
             document.removeEventListener("mouseup", dragEnd);
-
             document.removeEventListener("touchmove", dragMove);
             document.removeEventListener("touchend", dragEnd);
         }
@@ -401,6 +529,8 @@ var UI = {
             UI.system.changeCSSVar('accent', `${accent.r}, ${accent.g}, ${accent.b}`);
             const txt = tools.argbToRgb(scheme.props.onPrimaryContainer);
             UI.system.changeCSSVar('text', `rgb(${txt.r}, ${txt.g}, ${txt.b})`);
+            const txtUI = tools.argbToRgb(scheme.props.onPrimary);
+            UI.system.changeCSSVar('ui-text', `rgb(${txtUI.r}, ${txtUI.g}, ${txtUI.b})`);
         }
     },
     divider: function (element) {

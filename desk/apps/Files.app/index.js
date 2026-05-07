@@ -4,21 +4,36 @@ export async function launch(FS, UI, core, path) {
     win.main.window.style.width = "300px";
     const filesView = UI.create('div', win.main.content);
     filesView.style.padding = "0px";
+    var currentPath = "";
+    const plusButton = UI.dangerousButton(`<md-icon>add</md-icon>`, undefined, 'md-filled-tonal-icon-button', 'window-mgmt-button');
+    win.titlebar.buttons.prepend(plusButton);
+    plusButton.addEventListener('click', async function (event) {
+        const menu = UI.contextMenu(event);
+        const upBtn = UI.button('Upload file here', menu.menu, 'button', 'list-button');
+        upBtn.addEventListener('click', async function (event) {
+            menu.closeMenu(document.body);
+            const upload = await UI.uploadFileFromBrowser();
+            if (upload.file) {
+                await FS.write(currentPath + upload.file.name, upload.content, upload.isImage ? "blob" : "text");
+            }
+        });
+        menu.finish();
+    });
     async function nav(path) {
         const fileList = await FS.ls(path);
         filesView.innerHTML = "";
-        const crumbs = UI.create('div', filesView, 'column-button-container');
-        crumbs.style.padding = "var(--padding-small)";
-        crumbs.style.paddingTop = "0px";
+        win.titlebar.text.innerHTML = "";
+        const crumbs = UI.create('div', win.titlebar.text, 'column-button-container');
+        crumbs.style = "width: 100%; box-sizing: border-box";
         const buttonhome = UI.button('/', crumbs, 'button', 'small-button');
         buttonhome.onclick = () => {
             nav("");
         };
         const trimmedPath = path.replace(/\/+$/, '');
         const parts = trimmedPath.split('/').filter(Boolean);
-
-        let currentPath = '';
         const breadcrumbs = [];
+
+        currentPath = "";
 
         parts.forEach((part, index) => {
             currentPath += `/${part}`;
@@ -35,6 +50,9 @@ export async function launch(FS, UI, core, path) {
 
             breadcrumbs.push(button);
         });
+        
+        if (!currentPath.endsWith('/')) currentPath = currentPath + "/";
+
         Object.values(fileList).forEach(function (file) {
             const btn = UI.button('', filesView, 'button', 'list-button');
             console.log(btn);
@@ -91,6 +109,7 @@ export async function launch(FS, UI, core, path) {
     } else {
         nav('/');
     }
+    win.finish();
 }
 
 export async function pickFile(FS, UI, core, parameters) {
@@ -113,6 +132,29 @@ export async function pickFile(FS, UI, core, parameters) {
         async function nav(path) {
             const fileList = await FS.ls(path);
             filesView.innerHTML = "";
+            if (parameters.type === "folder") {
+                const bar = UI.create('div', filesView, 'bar');
+                const selectFolder = UI.button('Select Folder', bar, 'button', 'small-button');
+                selectFolder.addEventListener('click', function () {
+                    const dialog = UI.create('div', document.body, 'dialog-box');
+                    UI.text('Select folder', dialog, 'bold');
+                    UI.text(path, dialog);
+
+                    const buttonCont = UI.create('div', dialog, 'dialog-box-two-buttons');
+
+                    const cancel = UI.button('Cancel', buttonCont, 'md-outlined-button');
+                    cancel.addEventListener('click', function () {
+                        dialog.remove();
+                    });
+
+                    const select = UI.button('Select', buttonCont, 'md-filled-button', 'flex-grow-1');
+                    select.addEventListener('click', function () {
+                        win.main.window.remove();
+                        dialog.remove();
+                        resolve({ path: path, type: 'directory' });
+                    });
+                });
+            }
             const crumbs = UI.create('div', filesView, 'column-button-container');
             crumbs.style.padding = "var(--padding-small)";
             crumbs.style.paddingTop = "0px";
@@ -156,39 +198,35 @@ export async function pickFile(FS, UI, core, parameters) {
                 filetxt.style.marginLeft = "var(--padding-small)";
                 layout.right.innerText = "⋮";
 
-                btn.addEventListener('contextmenu', function (event) {
-                    event.preventDefault();
-                    const menu = UI.contextMenu(event);
-                    UI.button('Delete', menu.menu, 'button', 'list-button');
-                    menu.finish();
-                });
-
                 btn.addEventListener('dblclick', function () {
                     if (file.kind === "directory") {
                         nav(file.path);
                     } else {
-                        const dialog = UI.create('div', document.body, 'dialog-box');
-                        UI.text('Select file', dialog, 'bold');
-                        UI.text(file.name, dialog);
+                        if (parameters.type !== "folder") {
+                            const dialog = UI.create('div', document.body, 'dialog-box');
+                            UI.text('Select file', dialog, 'bold');
+                            UI.text(file.name, dialog);
 
-                        const buttonCont = UI.create('div', dialog, 'dialog-box-two-buttons');
+                            const buttonCont = UI.create('div', dialog, 'dialog-box-two-buttons');
 
-                        const cancel = UI.button('Cancel', buttonCont, 'md-outlined-button');
-                        cancel.addEventListener('click', function () {
-                            dialog.remove();
-                        });
+                            const cancel = UI.button('Cancel', buttonCont, 'md-outlined-button');
+                            cancel.addEventListener('click', function () {
+                                dialog.remove();
+                            });
 
-                        const select = UI.button('Select', buttonCont, 'md-filled-button', 'flex-grow-1');
-                        select.addEventListener('click', function () {
-                            win.main.window.remove();
-                            dialog.remove();
-                            resolve({ path: file.path, type: file.type });
-                        });
+                            const select = UI.button('Select', buttonCont, 'md-filled-button', 'flex-grow-1');
+                            select.addEventListener('click', function () {
+                                win.main.window.remove();
+                                dialog.remove();
+                                resolve({ path: file.path, type: file.type });
+                            });
+                        }
                     }
                 });
             });
         }
 
         nav('/');
+        win.finish();
     });
 }

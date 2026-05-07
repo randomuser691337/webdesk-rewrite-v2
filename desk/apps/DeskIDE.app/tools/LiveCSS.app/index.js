@@ -176,4 +176,5 @@ export async function launch(FS, UI, core) {
     setupmousedown(selectionButton, 'Selection', menu.selection);
 
     textarea.resize();
+    textedit.finish();
 }

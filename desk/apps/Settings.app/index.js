@@ -1,27 +1,80 @@
 export async function launch(FS, UI, core) {
+    // Corrected by AI:
+    // - Breadcrumbs
+    // - Temporary stylings
     const win = UI.window('Settings');
-    win.main.window.style.height = "300px";
-    win.main.window.style.width = "300px";
+    win.main.window.style.height = "360px";
+    win.main.window.style.width = "360px";
+    const tempStyle = UI.create('style', win.main.window, 'hide');
+    const mathRan = `crumbs-${Math.random().toString(36).slice(2)}`;
+    win.titlebar.text.id = mathRan;
+    tempStyle.textContent = `#${mathRan} * { margin-right: 2px; }`;
     const settingsView = UI.create('div', win.main.content);
+
+    var pane;
+    var crumbs = [];
+
+    function renderCrumb(name, func) {
+        console.log(crumbs);
+        if (name && crumbs[crumbs.length - 1]?.name !== name) {
+            crumbs.push({ name: name, func: func, position: crumbs.length });
+        }
+
+        win.titlebar.text.innerHTML = "";
+        crumbs.forEach(function (crumb) {
+            const crumbBtn = UI.button(crumb.name, win.titlebar.text, 'button', 'small-button');
+            crumbBtn.addEventListener('click', async function () {
+                crumbs.splice(crumb.position + 1);
+                renderCrumb();
+                const newPane = await crumb.func();
+                settingsView.appendChild(newPane);
+                UI.anims.crossFade(pane, newPane).then(function () {
+                    pane.remove();
+                    pane = newPane;
+                });
+            });
+        });
+        console.log(crumbs);
+    }
+
+    async function paneHandler(oldPane, newPane) {
+        settingsView.appendChild(newPane);
+        UI.anims.crossFade(oldPane, newPane).then(function () {
+            pane.remove();
+            pane = newPane;
+        });
+    }
+
     var panes = {
         Home: async function () {
-            const pane = UI.create('div');
-            UI.text('Settings', pane);
-            const workerBtn = UI.button('General', pane, 'md-filled-button', 'wide');
+            const newPane = UI.create('div', undefined, 'button-list-normal');
+            renderCrumb('Home', () => panes.Home());
+            UI.text('Settings', newPane);
+            const workerBtn = UI.button('General', newPane, 'md-filled-button', 'wide');
             workerBtn.addEventListener('click', async function () {
-                pane.remove();
                 const genPane = await panes.General();
-                settingsView.appendChild(genPane);
+                await paneHandler(pane, genPane);
             });
-            return pane;
+            const appearBtn = UI.button('Appearance', newPane, 'md-filled-button', 'wide');
+            appearBtn.addEventListener('click', async function () {
+                const appearPane = await panes.Appearance();
+                await paneHandler(pane, appearPane);
+            });
+            const devBtn = UI.button('Developer', newPane, 'md-filled-button', 'wide');
+            devBtn.addEventListener('click', async function () {
+                const devPane = await panes.Developer();
+                await paneHandler(pane, devPane);
+            });
+            return newPane;
         },
         General: async function () {
-            const pane = UI.create('div');
-            UI.text('General', pane);
-            const transferEraseBtn = UI.button('Transfer or Erase WebDesk', pane, 'md-filled-button', 'wide');
+            const newPane = UI.create('div', undefined, 'button-list-normal');
+            renderCrumb('General', () => panes.General());
+            const transferEraseBtn = UI.button('Transfer or Erase WebDesk', newPane, 'md-filled-button', 'wide');
             transferEraseBtn.addEventListener('click', async function () {
-                pane.remove();
-                const erasePane = UI.create('div', settingsView);
+                const erasePane = UI.create('div', undefined);
+                renderCrumb('Transfer or Erase WebDesk', () => panes.General());
+                await paneHandler(pane, erasePane);
                 const eraseBtn = UI.button('Erase All Content and Settings', erasePane, 'md-filled-button', 'wide');
                 eraseBtn.addEventListener('click', async function () {
                     const div = UI.create('div', document.body);
@@ -30,14 +83,11 @@ export async function launch(FS, UI, core) {
                     const dialog1 = UI.create('div', dialog);
                     UI.text('Are you sure you want to erase all media, content and settings?', dialog1, 'bold');
                     UI.text(`This cannot be undone.`, dialog1);
-
                     const buttonCont = UI.create('div', dialog1, 'dialog-box-two-buttons');
-
                     const cancel = UI.button('Cancel', buttonCont, 'md-outlined-button');
                     cancel.addEventListener('click', function () {
-                        div.remove();
+                        UI.anims.fadeOutRemove(div);
                     });
-
                     const select = UI.button('Erase WebDesk', buttonCont, 'md-filled-button', 'flex-grow-1');
                     select.addEventListener('click', async function () {
                         dialog1.remove();
@@ -48,10 +98,57 @@ export async function launch(FS, UI, core) {
                     });
                 });
             });
-            return pane;
+            return newPane;
+        },
+        Appearance: async function () {
+            const newPane = UI.create('div', undefined);
+            renderCrumb('Appearance', () => panes.Appearance());
+            UI.text('Appearance', newPane);
+            const buttonCont = UI.create('div', newPane, 'dialog-box-two-buttons');
+            const light = UI.button('Light', buttonCont, 'md-outlined-button');
+            light.addEventListener('click', async function () {
+                UI.system.applyTheme(await set.read('material-hex'), await set.read('material-hex'), false);
+            });
+            const dark = UI.button('Dark', buttonCont, 'md-filled-button', 'flex-grow-1');
+            dark.addEventListener('click', async function () {
+                UI.system.applyTheme(await set.read('material-hex'), await set.read('material-hex'), true);
+            });
+            UI.text('Wallpaper', newPane);
+            const wall = UI.button('Upload Wallpaper', newPane, 'md-filled-button', 'wide');
+            wall.addEventListener('click', async function () {
+                const upload = await UI.uploadFileFromBrowser();
+                if (upload.file && upload.isImage === true) {
+                    await FS.write(FS.normalizeUserPath('config/wallpaper'), upload.content, "blob");
+                    await UI.initialize();
+                }
+            });
+            return newPane;
+        },
+        Developer: async function () {
+            const newPane = UI.create('div');
+            renderCrumb('Developer', () => panes.Developer());
+            UI.text('Developer', newPane);
+            const bar = UI.create('div', newPane, 'bar');
+            const barbox = UI.create('div', bar, 'flexbox bar-in-a-bar');
+            UI.text('Force update', barbox, 'flexbox-left');
+            const forceSwitch = UI.create('md-switch', barbox, 'flexbox-right');
+            forceSwitch.addEventListener('change', function () {
+                if (forceSwitch.selected) {
+                    set.write('FORCEUPDATE', 'true');
+                } else {
+                    set.del('FORCEUPDATE');
+                }
+            });
+            UI.text(`Checking this box will make WebDesk update on every reload`, bar, 'small-text');
+
+            if (await set.read('FORCEUPDATE') === "true") {
+                forceSwitch.selected = true;
+            }
+            return newPane;
         }
     }
 
-    const genPane = await panes.Home();
-    settingsView.appendChild(genPane);
+    pane = await panes.Home();
+    settingsView.appendChild(pane);
+    win.finish();
 }

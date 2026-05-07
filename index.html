@@ -15,6 +15,11 @@
             rel="stylesheet">
         <script src="https://unpkg.com/fast-average-color/dist/index.browser.min.js"></script>
         <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+        <script type="module">
+            import { animate, scroll } from "https://cdn.jsdelivr.net/npm/motion@latest/+esm"
+            window.Animate = animate;
+            window.Scroll = scroll;
+        </script>
     </head>
 
     <body>
@@ -117,7 +122,7 @@
                 return new Promise((resolve, reject) => {
                     opID++;
                     promises[opID] = { resolve, reject };
-                    WFS.postMessage({ opID, op: "checkType", path });   
+                    WFS.postMessage({ opID, op: "checkType", path });
                 });
             },
             write: function (path, contents, type) {
@@ -126,6 +131,11 @@
                     promises[opID] = { resolve, reject };
                     WFS.postMessage({ opID, op: "write", path, contents, type });
                 });
+            },
+            cp: async function (pathToCopy, pathToPlace) {
+                const copy = await FS.read(pathToCopy);
+                const type = await FS.checkType(pathToCopy);
+                await FS.write(pathToPlace, copy, type);
             },
             rm: function (path) {
                 return new Promise((resolve, reject) => {
@@ -148,6 +158,9 @@
                     WFS.postMessage({ opID, op: "ls", path: path });
                 });
             },
+            normalizeUserPath: function (path) {
+                return sys.userPath + path;
+            }
         };
 
         // LITERALLY COPIED from WebDesk 0.3.3's previous rebuild
@@ -156,7 +169,7 @@
             async ensureConfigLoaded() {
                 if (!sys.config) {
                     try {
-                        const raw = await FS.read(sys.normalizeUserPath('config/config.json'));
+                        const raw = await FS.read(FS.normalizeUserPath('config/config.json'));
                         if (!raw) {
                             sys.config = {};
                             return;
@@ -164,7 +177,7 @@
                         sys.config = JSON.parse(raw);
                         console.log(sys.config);
                     } catch (e) {
-                        if (debug === true) console.log(e);
+                        if (core.debug === true) console.log(e);
                         sys.config = {};
                     }
                 }
@@ -173,7 +186,7 @@
                 try {
                     await this.ensureConfigLoaded();
                     sys.config[key] = value;
-                    await FS.write(sys.normalizeUserPath('config/config.json'), JSON.stringify(sys.config), 'text');
+                    await FS.write(FS.normalizeUserPath('config/config.json'), JSON.stringify(sys.config), 'text');
                     return true;
                 } catch (error) {
                     console.log(error);
@@ -184,7 +197,7 @@
                 try {
                     await this.ensureConfigLoaded();
                     delete sys.config[key];
-                    await FS.write(sys.normalizeUserPath('config/config.json'), JSON.stringify(sys.config), 'text');
+                    await FS.write(FS.normalizeUserPath('config/config.json'), JSON.stringify(sys.config), 'text');
                     return true;
                 } catch (error) {
                     console.log(error);
@@ -194,16 +207,12 @@
             async read(key) {
                 await this.ensureConfigLoaded();
                 return sys.config[key];
-            }
+            },
         };
     </script>
     <script>
-
         var sys = {
             userPath: "/home/user/",
-            normalizeUserPath: function (path) {
-                return sys.userPath + path;
-            },
             config: undefined
         }
 
@@ -249,17 +258,26 @@
                     const read = await FS.read(code2);
                     code2 = read;
                 }
-                const code = `export var id = ${id};\n` + code2;
 
+                const code = `export var id = ${id};\n` + code2;
                 const blob = new Blob([code], { type: "application/javascript" });
                 const url = URL.createObjectURL(blob);
                 const mod = await import(url);
 
+                core.tasks = core.tasks || {};
+                core.tasks[id] = {
+                    name: mod.name || 'Unnamed Module',
+                    id,
+                    task: mod
+                };
+
+                console.log(core.tasks[id]);
+
                 const task = { name: mod.name || 'Unnamed Module', id, task: mod };
                 this.tasks.push(task);
                 this.onTaskStart.forEach(cb => cb.callback(task));
-
                 URL.revokeObjectURL(url);
+
                 return mod;
             },
             async removeModule(id) {
@@ -268,6 +286,14 @@
                     this.tasks.splice(index, 1);
                     this.onTaskClosed.forEach(cb => cb.callback(id));
                 }
+
+                if (core.tasks && core.tasks[id]) {
+                    delete core.tasks[id];
+                }
+            },
+            async loadApp(path) {
+                const app = await core.loadModule(path, true);
+                return app;
             }
         }
         console.log("<i> WebDesk Bootloader (Immutable) initializing filesystem");
@@ -345,6 +371,7 @@
                 await reader.close();
                 console.log('<i> Starting post-install config');
                 await core.loadScript('/system/configure.js', true);
+                await regSetup();
                 console.log('<i> Install successful');
                 await FS.write('/system/version', version);
                 await init();
@@ -357,25 +384,21 @@
                 console.log(`<i> Initializing Material UI...`);
                 await core.loadScript('/system/mui.js', true);
 
-                const img = await FS.read('/system/img/wallpaper.jpg');
-                console.log(`<i> Creating object URL from blob`);
-                const objectUrl = await URL.createObjectURL(img);
-                console.log(`<i> Trying to display image`);
-                const wallimg = UI.create('img', document.body);
-                wallimg.style = `position: fixed;
-  width: 100%;
-  height: 100%;
-  z-index: -4;
-  object-fit: cover;
-  object-position: center;`
-                wallimg.src = objectUrl;
-                wallimg.onload = () => {
-                    const fac = new FastAverageColor();
-                    const color = fac.getColor(wallimg);
-                    console.log(color);
-                    document.adoptedStyleSheets.push(MaterialUI.typescaleStyles.styleSheet);
-                    UI.system.applyTheme(color.hex, color.hex, color.dark);
-                }
+                await UI.initialize();
+
+                // variables
+                await set.read('animsSlow').then(speed => {
+                    UI.animSpeed.slow = speed;
+                    UI.system.changeCSSVar('anim-speed-slow', `${speed}s`);
+                });
+                await set.read('animsMed').then(speed => {
+                    UI.animSpeed.med = speed;
+                    UI.system.changeCSSVar('anim-speed-med', `${speed}s`);
+                });
+                await set.read('animsFast').then(speed => {
+                    UI.animSpeed.fast = speed;
+                    UI.system.changeCSSVar('anim-speed-fast', `${speed}s`);
+                });
 
                 const Launcher = await core.loadModule('/system/apps/Launcher.app/index.js', true);
                 const editor = await Launcher.launch(FS, UI, core);
@@ -384,12 +407,12 @@
 
             // FORCEUPDATE flag
 
-            const FORCEUPDATE = true;
+            const FORCEUPDATE = await set.read('FORCEUPDATE');
 
             // END OF FORCEUPDATE flag 
 
             const ver = await FS.read('/system/version');
-            if (ver !== version || FORCEUPDATE === true) {
+            if (ver !== version || FORCEUPDATE === "true") {
                 console.log('WebDesk is out of date! Updating...');
                 installWebDesk();
             } else {

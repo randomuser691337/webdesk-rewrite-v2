@@ -1,6 +1,32 @@
 export var name = "DeskIDE";
 
 export async function launch(FS, UI, core, path) {
+    console.log(core.tasks[id].task);
+    const window = UI.window('Open - DeskIDE', core.tasks[id].task, false);
+    window.main.window.style.width = "320px";
+    const start = UI.create('div', window.main.content);
+    UI.text('Open an existing project/folder, or start a new project/folder', start);
+    const buttonCont = UI.create('div', start, 'dialog-box-two-buttons');
+
+    const openExisting = UI.button('Open Existing', buttonCont, 'md-outlined-button');
+    openExisting.addEventListener('click', async function () {
+        const picker = await core.loadApp('/apps/Files.app/index.js');
+        const file = await picker.pickFile(FS, UI, core, { name: "DeskIDE", type: "folder" });
+        if (file) {
+            await deskide(FS, UI, core, file.path);
+            window.close();
+        }
+    });
+
+    const newProject = UI.button('New Project', buttonCont, 'md-filled-button', 'flex-grow-1');
+    newProject.addEventListener('click', function () {
+        
+    });
+
+    window.finish();
+}
+
+export async function deskide(FS, UI, core, path) {
     // path must be a string
     const window = UI.window('DeskIDE');
     window.main.content.style = "display: flex; padding: 0px;";
@@ -16,6 +42,7 @@ export async function launch(FS, UI, core, path) {
     const calc = UI.math.calcRes(80, 80);
     window.main.window.style.height = calc.h + "px";
     window.main.window.style.width = calc.w + "px";
+    window.finish();
     const AceModule = await core.loadModule('/system/ace-rebuild.js', true);
     function returnBtnStyles() {
         return "font-family: 'Roboto'; background: transparent; font-size: var(--small-fz); border: none; display: block; box-sizing: border-box; text-align: left; cursor: pointer;";

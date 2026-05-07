@@ -1,5 +1,6 @@
 export var name = "Launcher";
-
+var win;
+var launcherOpen;
 export async function launch(FS, UI, core) {
     const shelf = UI.create('div', document.body, 'shelf');
     const layout = UI.leftRightLayout(undefined, shelf);
@@ -21,10 +22,20 @@ export async function launch(FS, UI, core) {
 }
 
 export async function launcher(FS, UI, core, shelfRect) {
-    const win = UI.create('div', document.body, 'window');
-    const filesView = UI.create('div', win, 'window-content');
-    win.style.height = "300px";
-    win.style.width = "300px";
+    function removeLauncher() {
+        launcherOpen = false;
+        Animate(win, { opacity: [1, 0] }, { ease: "easeInOut", duration: UI.animSpeed.fast }).then(() => win.remove());
+    }
+    if (launcherOpen === true) {
+        removeLauncher();
+        return;
+    } else {
+        launcherOpen = true;
+    }
+    win = UI.create('div', document.body, 'window');
+    const filesView = UI.create('div', win, 'window-content brick-layout');
+    filesView.style.minWidth = "200px";
+    Animate(win, { opacity: [0, 1] }, { ease: "easeInOut", duration: UI.animSpeed.fast });
 
     if (shelfRect) {
         console.log(shelfRect);
@@ -36,17 +47,8 @@ export async function launcher(FS, UI, core, shelfRect) {
         const apps = await FS.ls('/apps/');
         filesView.innerHTML = "";
         Object.values(apps).forEach(function (file) {
-            const btn = UI.button('', filesView, 'button', 'list-button');
-            console.log(btn);
+            const btn = UI.button(file.name, filesView, 'md-filled-button');
             const layout = UI.leftRightLayout(undefined, btn);
-
-            if (file.kind === "directory") {
-                layout.left.innerText = "" + file.name;
-            } else {
-                btn.style.display = "none";
-            }
-
-            layout.right.innerText = "⋮";
 
             btn.addEventListener('contextmenu', function (event) {
                 event.preventDefault();
@@ -57,9 +59,9 @@ export async function launcher(FS, UI, core, shelfRect) {
 
             btn.addEventListener('click', async function () {
                 if (file.kind === "directory") {
+                    removeLauncher();
                     const app = await core.loadModule(file.path + "/index.js", true);
                     const editor = await app.launch(FS, UI, core);
-                    win.remove();
                 }
             });
         });
@@ -67,11 +69,20 @@ export async function launcher(FS, UI, core, shelfRect) {
 
     const buttons = UI.create('div', win, 'window.titlebar');
     buttons.classList = "column-button-container";
-    buttons.style.padding = "var(--padding-normal)";
+    buttons.style = "padding: var(--padding-normal); padding-top: 0px !important";
+    const about = UI.button('About', buttons, 'button', 'small-button');
+    about.addEventListener('click', function () {
+        removeLauncher();
+        const win = UI.window('About WebDesk');
+        const mainPane = UI.create('div', win.main.content);
+        UI.text('WebDesk 0.3.3', mainPane, 'bold');
+        UI.text(`Designed by dbh_ra9`, mainPane);
+        win.finish();
+    });
     const refresh = UI.button('Refresh', buttons, 'button', 'small-button');
     refresh.addEventListener('click', () => refreshLauncher());
     const close = UI.button('Close', buttons, 'button', 'small-button');
-    close.addEventListener('click', () => win.remove());
+    close.addEventListener('click', () => removeLauncher());
     await refreshLauncher();
 }
 

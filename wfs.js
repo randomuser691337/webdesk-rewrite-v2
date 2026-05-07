@@ -142,7 +142,7 @@ var FS = {
                 }
             } catch (err2) {
                 console.log(err2);
-                return 'not found';
+                return null;
             }
         }
     },
