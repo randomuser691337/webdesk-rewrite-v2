@@ -11,8 +11,10 @@ export async function launch(FS, UI, core) {
         fontSize: "12px"
     });
 
-    textedit.main.content.style.height = "400px";
-    textedit.main.window.style.width = "480px";
+    if (core.mobile === false) {
+        textedit.main.content.style.height = "400px";
+        textedit.main.window.style.width = "480px";
+    }
     textedit.titlebar.text.innerHTML = "";
     textedit.titlebar.main.style.padding = "var(--padding-small)";
     const buttonContainer = UI.container(undefined, textedit.titlebar.text, 'column-button-container full-width');

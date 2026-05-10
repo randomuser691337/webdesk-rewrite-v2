@@ -7,6 +7,9 @@ var UI = {
         fast: 0.13,
     },
     systemElements: {
+        rect: {
+
+        },
         taskbarAppButtonList: undefined,
     },
     math: {
@@ -77,8 +80,8 @@ var UI = {
             input.click();
         })
     },
-    reorg: function (element) {
-        const buttons = Array.from(element.querySelectorAll('button'));
+    reorg: function (element, type) {
+        const buttons = Array.from(element.querySelectorAll(type));
         buttons.sort((a, b) => a.textContent.localeCompare(b.textContent));
         element.innerHTML = '';
         let currentLetter = '';
@@ -96,7 +99,43 @@ var UI = {
         const container = this.create('div', parent, `flexbox ${classList}`);
         const left = this.create('div', container, 'flexbox-left');
         const right = this.create('div', container, 'flexbox-right');
-        return { left, right };
+        return { left, right, el: container };
+    },
+    changeImg: async function (path, img) {
+        const blob = await FS.read(path);
+        if (blob instanceof Blob) {
+            img.src = URL.createObjectURL(blob);
+        } else if (path.endsWith('.svg')) {
+            const data = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(blob);
+            img.src = data;
+        } else {
+            console.log(`<!> ` + path + ` is not an image decodable by WebDesk's UI. Trying URL...`);
+            img.src = path;
+        }
+    },
+    snack: async function (message, delay) {
+        const snackBar = UI.create('div', document.body, 'snack');
+        snackBar.innerText = message;
+        await this.waitFrame();
+        const rect = snackBar.getBoundingClientRect();
+
+        Animate(snackBar, { bottom: ["-" + rect.height + "px", UI.systemElements.rect.shelf.height + 12 + "px", UI.systemElements.rect.shelf.height + 6 + "px"] }, { duration: UI.animSpeed.med, offset: [0, 0.75, 1] });
+        function remove() {
+            Animate(snackBar, { bottom: [UI.systemElements.rect.shelf.height + 6 + "px", "-" + rect.height + "px"] }, { duration: UI.animSpeed.med }).then(() => snackBar.remove());
+        }
+
+        if (delay == null) delay = 5000;
+        if (delay !== false) setTimeout(remove, delay);
+
+        return { bar: snackBar, remove };
+    },
+    img: async function (path, parent, classname) {
+        const img = this.create('img', parent, classname);
+        await UI.changeImg(path, img);
+        return img;
+    },
+    waitFrame: async function () {
+        await new Promise(r => requestAnimationFrame(r));
     },
     icon: function (iconName, parent, classList) {
         const el = UI.create('span', parent, classList + " material-symbols-outlined");
@@ -225,7 +264,7 @@ var UI = {
         txt.innerText = text;
         return txt;
     },
-    input: function (parent, placeholder, type, classList) {
+    input: function (placeholder, parent, type, classList) {
         var input = this.create("md-outlined-text-field", parent, classList);
         input.label = placeholder;
         if (type) {
@@ -253,6 +292,8 @@ var UI = {
                 - finish: Function to finish creating the window (REQUIRED!)
                 - close(removeModule): Destroys the window, and any elements associated with it.
                     - removeModule (true, false): If true and module is provided, it will remove the window and close the module with module.close(). If false, the module will NOT be closed, no matter what.
+                - minimize(): Minimizes the window, if unminimized.
+                - restore(): Restores the window, if minimized.
             - To create a window, for example:
                 const win = UI.window('Example window', module); // close buttons will only remove the window, not the module if the module param is undefined
                 UI.text('It works!', win.main.content);
@@ -268,36 +309,76 @@ var UI = {
         const titleBarText = this.create('div', titleBarLayout, 'window-titlebar-layout-text flexbox-left');
         const titleBarButtons = this.create('div', titleBarLayout, 'window-titlebar-layout-buttons flexbox-right');
         var minimized = false;
+        var ogPos = "flex";
+        var shelfButton;
 
         function generateShelfButton() {
             const btn = UI.button(title, UI.systemElements.taskbarAppButtonList, 'md-filled-button');
             btn.addEventListener('click', function () {
-                if (minimized === false) {
-                    
+                if (minimized === true) {
+                    restore();
                 }
+                UI.focusWin(win);
             });
             return btn;
         }
 
-        function minimize(removeModule) {
-            const calc = win.getBoundingClientRect();
-            Animate(win, { scale: [1.0, 0.7], opacity: [1, 0] }, { ease: "easeInOut", duration: UI.animSpeed.fast }).then(() => win.remove());
-            if (module && ((removeModule === true || closeModuleWithWindow === true) && removeModule !== false)) {
-                if (typeof module.close === "function") {
-                    module.close();
-                }
+        shelfButton = generateShelfButton();
+        shelfButtonRect = shelfButton.getBoundingClientRect();
+
+        function minimize() {
+            if (minimized === false) {
+                minimized = true;
+
+                const rect = shelfButton.getBoundingClientRect();
+                const winRect = win.getBoundingClientRect();
+
+                const dx = rect.x - winRect.x - winRect.width / 2 + 20;
+                const dy = rect.y - winRect.y - winRect.height;
+
+                win.style.transformOrigin = 'bottom center';
+                Animate(win, {
+                    x: [0, dx],
+                    y: [0, dy],
+                    scale: [1, 0],
+                    opacity: [1, 0.5]
+                }, { duration: UI.animSpeed.med, ease: "easeInOut" }).then(() => {
+                    win.dataset.minimized = 'true';
+                });
+            }
+        }
+
+        function restore() {
+            if (minimized === true) {
+                minimized = false;
+                win.style.transformOrigin = 'bottom center';
+                Animate(win, {
+                    x: [null, 0],
+                    y: [null, 0],
+                    scale: [null, 1],
+                    opacity: [null, 1]
+                }, { duration: UI.animSpeed.med, ease: "easeInOut" }).then(() => {
+                    win.dataset.minimized = 'false';
+                    win.style.transformOrigin = '';
+                });
             }
         }
 
         function close(removeModule) {
             const calc = win.getBoundingClientRect();
-            Animate(win, { scale: [1.0, 0.7], opacity: [1, 0] }, { ease: "easeInOut", duration: UI.animSpeed.fast }).then(() => win.remove());
+            if (shelfButton) UI.anims.fadeOut(shelfButton).then(() => shelfButton.remove());
+            Animate(win, { scale: [1.0, 0.5], opacity: [1, 0] }, { ease: "easeInOut", duration: UI.animSpeed.fast }).then(() => win.remove());
             if (module && ((removeModule === true || closeModuleWithWindow === true) && removeModule !== false)) {
                 if (typeof module.close === "function") {
                     module.close();
                 }
             }
         }
+
+        const minimizeBtn = UI.dangerousButton(`<md-icon>minimize</md-icon>`, titleBarButtons, 'md-filled-tonal-icon-button', 'window-mgmt-button');
+        minimizeBtn.addEventListener('click', function () {
+            minimize();
+        });
 
         const closeBtn = UI.dangerousButton(`<md-icon>close</md-icon>`, titleBarButtons, 'md-filled-tonal-icon-button', 'window-mgmt-button');
         closeBtn.addEventListener('click', function () {
@@ -307,52 +388,51 @@ var UI = {
         if (title) titleBarText.innerText = title;
 
         const content = this.create('div', win, 'window-content');
+        if (core.mobile === true) {
+            win.style = `left: 0px !important; top: 0px; !important; right: 0px !important; width: 100% !important; bottom: ${UI.systemElements.rect.shelf.height}px !important; border-radius: 0px !important; box-shadow: none !important;`
+        }
+
         UI.registerDrag(win, titlebar);
 
         function finish() {
             win.style.display = "flex";
-            win.style.left = (window.innerWidth - win.getBoundingClientRect().width) / 2 + "px";
-            win.style.top = (window.innerHeight - win.getBoundingClientRect().height) / 2 + "px";
-            Animate(win, { scale: [0.7, 1], opacity: [0, 1] }, { ease: "easeInOut", duration: UI.animSpeed.fast });
+            if (core.mobile === false) {
+                win.style.left = (window.innerWidth - win.getBoundingClientRect().width) / 2 + "px";
+                win.style.top = (window.innerHeight - win.getBoundingClientRect().height) / 2 + "px";
+
+                const winRect = win.getBoundingClientRect();
+                const originX = ((UI.mousePos.x - winRect.left) / winRect.width) * 100;
+                const originY = ((UI.mousePos.y - winRect.top) / winRect.height) * 100;
+
+                win.style.transformOrigin = `${originX}% ${originY}%`;
+                Animate(win, { scale: [0.5, 1], opacity: [0, 1] }, { ease: "easeInOut", duration: UI.animSpeed.fast }).then(() => win.style.transformOrigin = "50% 50%");
+            } else {
+                Animate(win, { scale: [0.3, 1], opacity: [0, 1] }, { ease: "easeInOut", duration: UI.animSpeed.fast }).then(() => win.style.transformOrigin = "50% 50%");
+            }
         }
 
-        return { finish, close, "titlebar": { "main": titlebar, "layout": titleBarLayout, "buttons": titleBarButtons, "text": titleBarText }, "main": { "window": win, "content": content } }
+        return { finish, close, minimize, restore, "titlebar": { "main": titlebar, "layout": titleBarLayout, "buttons": titleBarButtons, "text": titleBarText }, "main": { "window": win, "content": content } }
+    },
+    // focusWin and registerDrag rewritten and decoupled by Claude
+    focusWin: function (elmnt) {
+        if (windowArray.at(-1) === elmnt) return;
+        const BASE_Z = 100;
+        const topZ = parseInt(windowArray.at(-1).style.zIndex) || BASE_Z;
+        elmnt.style.zIndex = topZ + 1;
+        const index = windowArray.indexOf(elmnt);
+        if (index > -1) windowArray.splice(index, 1);
+        windowArray.push(elmnt);
     },
     registerDrag: function (elmnt, dragHandle) {
-        console.log(windowArray);
-        if (windowArray.at(-1)) {
-            const lastWin = Number(window.getComputedStyle(windowArray.at(-1)).zIndex) + 1;
-            if (core.debug === true) console.log(`<i> register drag current win zIndex: ` + lastWin)
-            elmnt.style.zIndex = lastWin;
-        }
+        const BASE_Z = 100;
+        const lastZ = windowArray.length > 0
+            ? (parseInt(windowArray.at(-1).style.zIndex) || BASE_Z)
+            : BASE_Z;
+        elmnt.style.zIndex = lastZ + 1;
         windowArray.push(elmnt);
 
-        // focusWin written by me, debugged by AI
-        function focusWin() {
-            if (windowArray.at(-1) === elmnt) {
-                if (core.debug === true) console.log(`<!> Skipping ` + elmnt + `, it's already the highest`);
-                return;
-            }
-            const newZIndex = Number(window.getComputedStyle(windowArray.at(-1)).zIndex) + 1;
-            if (core.debug === true) {
-                console.log(windowArray.at(-2));
-                console.log(windowArray.at(-1));
-                console.log(newZIndex);
-            }
-            elmnt.style.zIndex = newZIndex;
-            const index = windowArray.indexOf(elmnt);
-            if (index > -1) {
-                if (core.debug === true) console.log(`<i> found ` + elmnt + `, removing...`);
-                windowArray.splice(index, 1);
-            }
-            windowArray.push(elmnt);
-        }
-
-        focusWin();
-
-        elmnt.addEventListener('mousedown', function () {
-            focusWin();
-        });
+        elmnt.addEventListener('mousedown', () => UI.focusWin(elmnt));
+        elmnt.addEventListener('touchstart', () => UI.focusWin(elmnt), { passive: true });
 
         let startX = 0, startY = 0;
         let currentX = 0, currentY = 0;
@@ -360,53 +440,43 @@ var UI = {
 
         const target = dragHandle || elmnt;
 
-        target.addEventListener("mousedown", dragStart);
-        target.addEventListener("touchstart", dragStart, { passive: false });
+        if (core.mobile === false) {
+            target.addEventListener("mousedown", dragStart);
+            target.addEventListener("touchstart", dragStart, { passive: false });
+        }
 
         function getPoint(e) {
-            if (e.touches) {
-                return {
-                    x: e.touches[0].clientX,
-                    y: e.touches[0].clientY
-                };
-            }
-            return { x: e.clientX, y: e.clientY };
+            const src = e.touches?.[0] ?? e.changedTouches?.[0] ?? e;
+            return { x: src.clientX, y: src.clientY };
         }
 
         function dragStart(e) {
             if (e.target.tagName.toLowerCase().includes('button')) return;
-
             e.preventDefault();
             const p = getPoint(e);
-
             startX = p.x - currentX;
             startY = p.y - currentY;
             dragging = true;
 
             document.addEventListener("mousemove", dragMove);
             document.addEventListener("mouseup", dragEnd);
-
             document.addEventListener("touchmove", dragMove, { passive: false });
             document.addEventListener("touchend", dragEnd);
         }
 
         function dragMove(e) {
             if (!dragging) return;
-
             e.preventDefault();
             const p = getPoint(e);
-
             currentX = p.x - startX;
             currentY = p.y - startY;
-
             elmnt.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
         }
 
-        function dragEnd(e) {
+        function dragEnd() {
             if (!dragging) return;
             dragging = false;
 
-            const p = getPoint(e);
             elmnt.style.left = (parseFloat(elmnt.style.left) || 0) + currentX + 'px';
             elmnt.style.top = (parseFloat(elmnt.style.top) || 0) + currentY + 'px';
             elmnt.style.transform = '';
@@ -550,3 +620,9 @@ var tools = {
         return { a, r, g, b };
     }
 }
+
+UI.mousePos = { x: 0, y: 0 };
+document.addEventListener("mousemove", (e) => {
+    UI.mousePos.x = e.clientX;
+    UI.mousePos.y = e.clientY;
+});

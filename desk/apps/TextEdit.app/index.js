@@ -13,8 +13,10 @@ export async function editor(path, contents) {
     const textedit = UI.window('TextEdit');
     const AceModule = await core.loadModule('/system/ace-rebuild.js', true);
     console.log(AceModule);
-    textedit.main.content.style.height = "400px";
-    textedit.main.window.style.width = "480px";
+    if (core.mobile === false) {
+        textedit.main.content.style.height = "400px";
+        textedit.main.window.style.width = "480px";
+    }
     textedit.finish();
     textedit.titlebar.text.innerHTML = "";
     textedit.titlebar.main.style.padding = "var(--padding-small)";

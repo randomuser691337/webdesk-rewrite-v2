@@ -15,9 +15,21 @@ async function regSetup() {
     if (!await set.read('animsFast')) {
         await set.write('animsFast', '0.15');
     }
+    if (!await set.read('font-family')) {
+        await set.write('font-family', 'Poppins');
+    }
     // CHANGE AFTER STABLE RELEASE!!!
     if (!await set.read('FORCEUPDATE')) {
         await set.write('FORCEUPDATE', 'true');
+    }
+    if (!await set.read('mobile')) {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+            await set.write('mobile', 'true');
+        } else {
+            await set.write('mobile', 'false');
+        }
+
     }
     if (!await FS.checkType(FS.normalizeUserPath('config/wallpaper'))) {
         await FS.cp('/system/img/wallpaper.jpg', FS.normalizeUserPath('config/wallpaper'));

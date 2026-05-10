@@ -15,6 +15,66 @@
             rel="stylesheet">
         <script src="https://unpkg.com/fast-average-color/dist/index.browser.min.js"></script>
         <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+        <style>
+            :root {
+                --acc: 255, 255, 255;
+            }
+
+            .line-wobble,
+            .line-wobble::after {
+                border-radius: calc(var(--uib-line-weight)/ 2)
+            }
+
+            .line-wobble::after,
+            .line-wobble::before {
+                content: '';
+                height: 100%;
+                width: 100%;
+                background-color: rgba(var(--acc), 1.0);
+            }
+
+            .line-wobble {
+                --uib-size: 120px;
+                --uib-speed: 1.55s;
+                --uib-color: rgba(var(--acc), 0.5);
+                --uib-line-weight: 6px;
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: var(--uib-line-weight);
+                width: var(--uib-size);
+                overflow: hidden;
+                transform: translate3d(0, 0, 0)
+            }
+
+            .line-wobble::before {
+                position: absolute;
+                top: 0;
+                left: 0;
+                opacity: .2
+            }
+
+            .line-wobble::after {
+                animation: wobble var(--uib-speed) ease-in-out infinite;
+                transform: translateX(-90%)
+            }
+
+            #webdesk-loading {
+                position: fixed;
+                left: 0px; right: 0px; top: 0px; bottom: 0px;
+                background-color: #000;
+                z-index: 9999999999999999999;
+            }
+
+            #center {
+                position: fixed;
+                left: 50%; 
+                top: 50%;
+                transform: translate(-50%, -50%);
+                max-width: 90%;
+            }
+        </style>
         <script type="module">
             import { animate, scroll } from "https://cdn.jsdelivr.net/npm/motion@latest/+esm"
             window.Animate = animate;
@@ -23,7 +83,11 @@
     </head>
 
     <body>
-
+        <div id="webdesk-loading">
+            <div id="center">
+                <div class="line-wobble"></div>
+            </div>
+        </div>
     </body>
     <script>
         // WebDesk File System v?.?
@@ -213,10 +277,11 @@
     <script>
         var sys = {
             userPath: "/home/user/",
-            config: undefined
+            config: undefined,
         }
 
         var core = {
+            mobile: false,
             debug: true,
             latestVersion: '0.3.3',
             lowgfxMode: false,
@@ -399,10 +464,17 @@
                     UI.animSpeed.fast = speed;
                     UI.system.changeCSSVar('anim-speed-fast', `${speed}s`);
                 });
+                await set.read('font-family').then(font => {
+                    UI.system.changeCSSVar('md-ref-typeface-plain', font);
+                });
+                await set.read('mobile').then(mobile => {
+                    if (mobile === "true") core.mobile = true;
+                });
 
                 const Launcher = await core.loadModule('/system/apps/Launcher.app/index.js', true);
                 const editor = await Launcher.launch(FS, UI, core);
-                core.loadScript('/system/init.js', true);
+                await core.loadScript('/system/init.js', true);
+                UI.anims.fadeOut(document.getElementById('webdesk-loading')).then(() => document.getElementById('webdesk-loading').remove());
             }
 
             // FORCEUPDATE flag

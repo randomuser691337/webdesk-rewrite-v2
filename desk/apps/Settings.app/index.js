@@ -3,8 +3,10 @@ export async function launch(FS, UI, core) {
     // - Breadcrumbs
     // - Temporary stylings
     const win = UI.window('Settings');
-    win.main.window.style.height = "360px";
-    win.main.window.style.width = "360px";
+    if (core.mobile === false) {
+        win.main.window.style.width = "380px";
+        win.main.window.style.maxHeight = "540px";
+    }
     const tempStyle = UI.create('style', win.main.window, 'hide');
     const mathRan = `crumbs-${Math.random().toString(36).slice(2)}`;
     win.titlebar.text.id = mathRan;
@@ -71,6 +73,25 @@ export async function launch(FS, UI, core) {
             const newPane = UI.create('div', undefined, 'button-list-normal');
             renderCrumb('General', () => panes.General());
             const transferEraseBtn = UI.button('Transfer or Erase WebDesk', newPane, 'md-filled-button', 'wide');
+
+            const bar = UI.create('div', newPane, 'bar');
+            const barbox = UI.create('div', bar, 'flexbox bar-in-a-bar');
+            UI.text('Mobile UI', barbox, 'flexbox-left');
+            const mobileSwitch = UI.create('md-switch', barbox, 'flexbox-right');
+            mobileSwitch.addEventListener('change', function () {
+                if (mobileSwitch.selected) {
+                    set.write('mobile', 'true');
+                } else {
+                    set.del('mobile');
+                }
+            });
+            
+            UI.text(`Turning this on will enable the mobile UI`, bar, 'small-text');
+
+            if (await set.read('mobile') === "true") {
+                mobileSwitch.selected = true;
+            }
+
             transferEraseBtn.addEventListener('click', async function () {
                 const erasePane = UI.create('div', undefined);
                 renderCrumb('Transfer or Erase WebDesk', () => panes.General());
@@ -78,7 +99,7 @@ export async function launch(FS, UI, core) {
                 const eraseBtn = UI.button('Erase All Content and Settings', erasePane, 'md-filled-button', 'wide');
                 eraseBtn.addEventListener('click', async function () {
                     const div = UI.create('div', document.body);
-                    div.style = `position: fixed; left: 0px; right: 0px; top: 0px; bottom: 0px; z-index: 9999999; background-color: rgba(0, 0, 0, 0.2); backdrop-filter: blur(var(--blur-main)); -webkit-backdrop-filter: blur(var(--blur-main)); animation: fade-in var(--anim-speed-slow) ease;`;
+                    div.style = `position: fixed; left: 0px; right: 0px; top: 0px; bottom: 0px; z-index: 9999999; background-color: rgba(0, 0, 0, 0.2); backdrop-filter: blur(var(--blur-main)); -webkit-backdrop-filter: blur(var(--blur-main));`;
                     const dialog = UI.create('div', div, 'dialog-box');
                     const dialog1 = UI.create('div', dialog);
                     UI.text('Are you sure you want to erase all media, content and settings?', dialog1, 'bold');
@@ -104,8 +125,8 @@ export async function launch(FS, UI, core) {
             const newPane = UI.create('div', undefined);
             renderCrumb('Appearance', () => panes.Appearance());
             UI.text('Appearance', newPane);
-            const buttonCont = UI.create('div', newPane, 'dialog-box-two-buttons');
-            const light = UI.button('Light', buttonCont, 'md-outlined-button');
+            const buttonCont = UI.create('div', newPane, 'dialog-box-two-buttons no-padding');
+            const light = UI.button('Light', buttonCont, 'md-outlined-button', 'flex-grow-1');
             light.addEventListener('click', async function () {
                 UI.system.applyTheme(await set.read('material-hex'), await set.read('material-hex'), false);
             });
@@ -113,8 +134,15 @@ export async function launch(FS, UI, core) {
             dark.addEventListener('click', async function () {
                 UI.system.applyTheme(await set.read('material-hex'), await set.read('material-hex'), true);
             });
+
             UI.text('Wallpaper', newPane);
-            const wall = UI.button('Upload Wallpaper', newPane, 'md-filled-button', 'wide');
+            const buttonCont2 = UI.create('div', newPane, 'dialog-box-two-buttons no-padding');
+            const reset = UI.button('Reset', buttonCont2, 'md-outlined-button');
+            reset.addEventListener('click', async function () {
+                await FS.cp('/system/img/wallpaper.jpg', FS.normalizeUserPath('config/wallpaper'));
+                await UI.initialize();
+            });
+            const wall = UI.button('Upload Wallpaper', buttonCont2, 'md-filled-button', 'flex-grow-1');
             wall.addEventListener('click', async function () {
                 const upload = await UI.uploadFileFromBrowser();
                 if (upload.file && upload.isImage === true) {
@@ -122,6 +150,25 @@ export async function launch(FS, UI, core) {
                     await UI.initialize();
                 }
             });
+
+            UI.text(`Font`, newPane);
+            var fontFaces = ['Poppins', 'Arial', 'system-ui', 'Open Sans', 'Roboto', 'Roboto Mono', 'Google Sans', 'Comic Relief'];
+            const list = UI.list.create('bar', newPane);
+            list.style = "max-height: 240px; overflow: auto !important;";
+            fontFaces.forEach(function (fontFace) {
+                const item = UI.list.addItem('button', list, undefined, fontFace);
+                item.supportingText('The quick brown fox jumps over the lazy dog.');
+                const tempStyle = UI.create('style', item.item, 'hide');
+                const mathRan = `list-item-${Math.random().toString(36).slice(2)}`;
+                item.item.id = mathRan;
+                tempStyle.textContent = `#${mathRan} * { font-family: ${fontFace} !important; }`;
+                item.item.addEventListener('click', async function () {
+                    UI.system.changeCSSVar('md-ref-typeface-plain', fontFace);
+                    await set.write('font-family', fontFace);
+                });
+            });
+            UI.reorg(list, 'md-list-item');
+
             return newPane;
         },
         Developer: async function () {
@@ -139,7 +186,8 @@ export async function launch(FS, UI, core) {
                     set.del('FORCEUPDATE');
                 }
             });
-            UI.text(`Checking this box will make WebDesk update on every reload`, bar, 'small-text');
+
+            UI.text(`Turning this on will make WebDesk update on every reload`, bar, 'small-text');
 
             if (await set.read('FORCEUPDATE') === "true") {
                 forceSwitch.selected = true;

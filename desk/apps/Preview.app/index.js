@@ -8,7 +8,7 @@ export async function launch(FS, UI, core, path) {
         var contents;
         win = UI.window(path, core.tasks[id].task);
         win.main.content.style = "backdrop-filter: blur(0px); padding: 0px";
-        win.main.window.style.width = "450px";
+        if (core.mobile === false) { win.main.window.style.width = "450px"; }
         win.finish();
 
         const img = new Image();
@@ -40,7 +40,7 @@ export async function launch(FS, UI, core, path) {
     if (!path) {
         const code = await FS.read('/apps/Files.app/index.js');
         const mod = await core.loadModule(code);
-        const path = await mod.pickFile(FS, UI, core, {name: "Preview"});
+        const path = await mod.pickFile(FS, UI, core, { name: "Preview" });
         if (path) {
             await open(path.path, false, path);
         } else {

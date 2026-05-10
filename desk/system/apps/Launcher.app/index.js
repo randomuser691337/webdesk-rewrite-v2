@@ -4,21 +4,31 @@ var launcherOpen;
 export async function launch(FS, UI, core) {
     const shelf = UI.create('div', document.body, 'shelf');
     const layout = UI.leftRightLayout(undefined, shelf);
+    shelf.style.zIndex = "999999999999";
+
+    if (core.mobile === true) shelf.style.borderRadius = "0px"; shelf.style.borderTop = "1px solid rgba(var(--ui-1)";
 
     const startBtn = UI.button('', layout.left, 'button', 'shelf-button');
     UI.create('div', UI.create('div', startBtn, 'shelf-button-layer-2'), 'shelf-button-layer-3');
     startBtn.addEventListener('click', async function () {
         const rect = await shelf.getBoundingClientRect();
+        UI.systemElements.rect.shelf = rect;
         if (core.debug === true) console.log(rect);
         await launcher(FS, UI, core, rect);
     });
 
+    UI.systemElements.taskbarAppButtonList = UI.create('div', layout.left, 'button-list-horizontal');
+
     const controlsBtn = UI.button('4:20 PM', layout.right, 'md-text-button');
     controlsBtn.addEventListener('click', async function () {
         const rect = await shelf.getBoundingClientRect();
+        UI.systemElements.rect.shelf = rect;
         if (core.debug === true) console.log(rect);
         await launcher(FS, UI, core, rect);
     });
+
+    const rect = await shelf.getBoundingClientRect();
+    UI.systemElements.rect.shelf = rect;
 }
 
 export async function launcher(FS, UI, core, shelfRect) {
@@ -33,6 +43,15 @@ export async function launcher(FS, UI, core, shelfRect) {
         launcherOpen = true;
     }
     win = UI.create('div', document.body, 'window');
+    win.style.zIndex = "999999999999";
+    if (core.mobile === true) {
+        win.style.top = "4px";
+        win.style.right = "4px";
+        win.style.width = "auto";
+    }
+    const searchBoxContainer = UI.create('div', win);
+    searchBoxContainer.style = `padding: var(--padding-normal); padding-bottom: 0px;`;
+    const searchApps = UI.input('Search apps', searchBoxContainer, undefined, 'wide');
     const filesView = UI.create('div', win, 'window-content brick-layout');
     filesView.style.minWidth = "200px";
     Animate(win, { opacity: [0, 1] }, { ease: "easeInOut", duration: UI.animSpeed.fast });

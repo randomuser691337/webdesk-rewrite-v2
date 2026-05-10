@@ -2,49 +2,49 @@ async function startsockets() {
     const devsocket = await set.read('devsocket');
     return new Promise((resolve) => {
         try {
-            if (sys.socket) {
-                sys.socket.disconnect();
-                sys.socket = undefined;
+            if (core.socket) {
+                core.socket.disconnect();
+                core.socket = undefined;
             }
 
             if (devsocket === "true") {
-                sys.socket = io('wss://webdeskbeta.meower.xyz/');
+                core.socket = io('wss://webdeskbeta.meower.xyz/');
                 UI.notif('Using beta socket server', 'This is for testing purposes only and might not even be online.');
             } else {
-                sys.socket = io("wss://webdesk.meower.xyz/");
+                core.socket = io("wss://webdesk.meower.xyz/");
             }
 
             const timeout = setTimeout(() => {
                 console.log('<!> Connection timeout: No response in 6 seconds');
-                sys.socket.disconnect();
-                sys.socket = undefined;
+                core.socket.disconnect();
+                core.socket = undefined;
                 resolve(false);
             }, 6000);
 
             /* if (params.get('listen') === "yes") {
-                sys.socket.onAny((event, ...args) => {
+                core.socket.onAny((event, ...args) => {
                     console.log(`Received event: ${event}`, args);
                 });
             } */
 
-            sys.socket.on('connect_error', (error) => {
+            core.socket.on('connect_error', (error) => {
                 clearTimeout(timeout);
                 console.log('<!> Connection error: ', error);
-                sys.socket.disconnect();
-                sys.socket = undefined;
+                core.socket.disconnect();
+                core.socket = undefined;
                 resolve(false);
                 webid.priv = -1;
             });
 
-            sys.socket.on("servmsg", (data) => {
+            core.socket.on("servmsg", (data) => {
                 UI.snack(data);
             });
 
-            sys.socket.on("umsg", (data) => {
+            core.socket.on("umsg", (data) => {
                 UI.snack(data);
             });
 
-            sys.socket.on("error", (data) => {
+            core.socket.on("error", (data) => {
                 if (data == "No token provided" && sys.setupd === false) {
                     console.log(`<!> Quiet error: ` + data);
                 } else {
@@ -52,23 +52,23 @@ async function startsockets() {
                 }
             });
 
-            sys.socket.on("force_update", (data) => {
+            core.socket.on("force_update", (data) => {
                 window.location.reload();
             });
 
-            sys.socket.on("connect", async () => {
+            core.socket.on("connect", async () => {
                 clearTimeout(timeout);
                 const token = await FS.read('/user/info/token');
                 console.log('<i> Connected to WebDesk server');
                 if (token) {
-                    sys.socket.emit("login", token);
+                    core.socket.emit("login", token);
                 } else {
                     console.log('<!> No token');
                 }
                 resolve(true);
             });
 
-            sys.socket.on("checkback", async (thing) => {
+            core.socket.on("checkback", async (thing) => {
                 if (thing.error === true) {
                     await FS.del('/user/info/token');
                     window.location.reload();
@@ -92,9 +92,9 @@ async function startsockets() {
             });
         } catch (error) {
             console.log(error);
-            if (sys.socket) {
-                sys.socket.disconnect();
-                sys.socket = undefined;
+            if (core.socket) {
+                core.socket.disconnect();
+                core.socket = undefined;
             }
             resolve(false);
         }
