@@ -521,6 +521,7 @@ md-list-item {
     border-radius: var(--radii-main);
     background-color: rgba(var(--ui-1), 1.0);
     border: 1px solid rgba(var(--ui-1-border-color));
+    z-index: 9999999999999;
 }
 
 .margin-bottom-small {

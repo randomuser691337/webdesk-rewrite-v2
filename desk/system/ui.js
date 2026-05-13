@@ -12,6 +12,28 @@ var UI = {
         },
         taskbarAppButtonList: undefined,
     },
+    events: {
+        onRemove: function (targetElement) {
+            return new Promise((resolve) => {
+                const parentElement = targetElement.parentNode;
+                const observer = new MutationObserver((mutationsList, observer) => {
+                    for (const mutation of mutationsList) {
+                        if (mutation.type === 'childList') {
+                            // Check if the specific target was among the removed nodes
+                            mutation.removedNodes.forEach(node => {
+                                if (node === targetElement) {
+                                    observer.disconnect();
+                                    resolve();
+                                }
+                            });
+                        }
+                    }
+                });
+
+                observer.observe(parentElement, { childList: true });
+            })
+        }
+    },
     math: {
         calcRes: function (wPercent, hPercent) {
             // Made by Claude
@@ -41,6 +63,25 @@ var UI = {
                 el.style.display = "none";
             });
         }
+    },
+    truncater: function (inputString, size, dots) {
+        if (inputString.length <= size) {
+            return inputString;
+        } else {
+            if (dots !== false) {
+                return inputString.slice(0, size - 2) + '..';
+            } else {
+                return inputString.slice(0, size);
+            }
+        }
+    },
+    key: function (element, keycode, action) {
+        element.addEventListener('keydown', (event) => {
+            if (event.key === keycode) {
+                event.preventDefault();
+                action();
+            }
+        });
     },
     initialize: async function () {
         const img = await FS.read(FS.normalizeUserPath('config/wallpaper'));

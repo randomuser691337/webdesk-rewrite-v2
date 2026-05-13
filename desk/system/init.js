@@ -33,7 +33,7 @@ async function startsockets() {
                 core.socket.disconnect();
                 core.socket = undefined;
                 resolve(false);
-                webid.priv = -1;
+                sys.webid.priv = -1;
             });
 
             core.socket.on("servmsg", (data) => {
@@ -58,7 +58,7 @@ async function startsockets() {
 
             core.socket.on("connect", async () => {
                 clearTimeout(timeout);
-                const token = await FS.read('/user/info/token');
+                const token = await FS.read(FS.normalizeUserPath('config/token'));
                 console.log('<i> Connected to WebDesk server');
                 if (token) {
                     core.socket.emit("login", token);
@@ -76,9 +76,9 @@ async function startsockets() {
                     sys.name = thing.username;
                     sd = thing.username;
                     await set.write('name', thing.username);
-                    webid.token = await FS.read('/user/info/token');
-                    webid.priv = thing.priv;
-                    webid.userid = thing.userid;
+                    sys.webid.token = await FS.read(FS.normalizeUserPath('config/token'));
+                    sys.webid.priv = thing.priv;
+                    sys.webid.userid = thing.userid;
                     if (thing.priv === 0) {
                         UI.notif('Your account has been limited.', `You can still use WebDesk normally, but you can't use online services.`);
                     }
@@ -86,7 +86,7 @@ async function startsockets() {
 - Username: ${thing.username}
 - Account permission level: ${thing.priv}
 - UserID: ${thing.userid}
-- Token: ${UI.truncate(webid.token, 8)}`);
+- Token: ${UI.truncater(sys.webid.token, 8)}`);
                 }
                 resolve(true);
             });

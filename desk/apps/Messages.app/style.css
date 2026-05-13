@@ -1,0 +1,39 @@
+.message-container {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: auto;
+}
+
+.msg {
+    font: var(--ui-text);
+    padding: 5px 7px;
+    border-radius: 18px;
+    font-family: var(--font);
+    font-size: var(--fz2);
+    max-width: 70%;
+    word-wrap: break-word;
+    display: inline-block;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.07);
+    text-align: left;
+    overflow: show !important;
+    position: relative;
+}
+
+.mesent {
+    align-self: flex-end;
+    background-color: rgba(var(--accent), 1.0);
+    border-radius: 8px 8px 3px 8px;
+}
+
+.othersent {
+    align-self: flex-start;
+    background-color: rgba(var(--ui-1));
+    border-radius: 8px 8px 8px 3px;
+}
+
+.msg-ui {
+    overflow: hidden;
+}

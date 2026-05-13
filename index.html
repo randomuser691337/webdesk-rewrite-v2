@@ -259,7 +259,7 @@
                     }
                 }
             },
-            async write(key, value) {
+            async write(key, value, optionalFile) {
                 try {
                     await this.ensureConfigLoaded();
                     sys.config[key] = value;
@@ -285,15 +285,69 @@
                 await this.ensureConfigLoaded();
                 return sys.config[key];
             },
+            contacts: {
+                async ensureContactsLoaded() {
+                    if (!sys.contacts) {
+                        try {
+                            const raw = await FS.read(FS.normalizeUserPath('config/contacts.json'));
+                            if (!raw) {
+                                sys.contacts = {};
+                                return;
+                            }
+                            sys.contacts = JSON.parse(raw);
+                            console.log(sys.contacts);
+                        } catch (e) {
+                            if (core.debug === true) console.log(e);
+                            sys.contacts = {};
+                        }
+                    }
+                },
+                async add(userName, details) {
+                    try {
+                        await this.ensureContactsLoaded();
+                        sys.contacts[userName] = { userName: userName, details: details };
+                        await FS.write(FS.normalizeUserPath('config/contacts.json'), JSON.stringify(sys.contacts), 'text');
+                        return true;
+                    } catch (error) {
+                        console.log(error);
+                        return false;
+                    }
+                },
+                async remove(userName) {
+                    try {
+                        await this.ensureContactsLoaded();
+                        delete sys.contacts[userName];
+                        await FS.write(FS.normalizeUserPath('config/contacts.json'), JSON.stringify(sys.contacts), 'text');
+                        return true;
+                    } catch (error) {
+                        console.log(error);
+                        return false;
+                    }
+                },
+                async getAll() {
+                    await this.ensureContactsLoaded();
+                    return sys.contacts;
+                },
+                async read(userName) {
+                    await this.ensureContactsLoaded();
+                    return sys.contacts[userName];
+                },
+            }
         };
     </script>
     <script>
         var sys = {
             userPath: "/home/user/",
             config: undefined,
+            webid: {
+                
+            }
         }
 
         var core = {
+            onlined: {
+                messages: undefined
+            },
             mobile: false,
             debug: true,
             latestVersion: '0.3.3',
@@ -467,7 +521,6 @@
                         await core.loadStyle('/system/styles.css', true);
                         console.log(`<i> Initializing Material UI...`);
                         await core.loadScript('/system/mui.js', true);
-
                         await UI.initialize();
 
                         // variables
@@ -493,6 +546,8 @@
                         const Launcher = await core.loadModule('/system/apps/Launcher.app/index.js', true);
                         const editor = await Launcher.launch(FS, UI, core);
                         await core.loadScript('/system/init.js', true);
+                        const onlined = await core.loadModule('/system/apps/onlined.app/index.js', true);
+                        await onlined.launch(FS, UI, core);
                         UI.anims.fadeOut(document.getElementById('webdesk-loading')).then(() => document.getElementById('webdesk-loading').remove());
                     } catch (error) {
                         panic(error);
