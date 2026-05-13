@@ -101,6 +101,16 @@
         var promises = {}
         var initalr = false;
         var overzip = false;
+
+        function panic(errorStackFromConsole) {
+            document.body.innerHTML = `<div style="padding: 20px; color: #fff !important; background-color: #000">
+                <h2>WebDesk has crashed.</h2>
+                <p>Error details:</p>
+                ${errorStackFromConsole}
+                <p><button onclick="window.location.reload();">Reload</button></p>
+            </div>`;
+        }
+
         (async function () {
             let over = false;
             async function loadwfs(code) {
@@ -364,7 +374,8 @@
         console.log("<i> WebDesk Bootloader (Immutable) initializing filesystem");
         console.log("<i> Conducting image test...");
         async function boot() {
-            if (navigator.onLine) {
+            try {
+                if (navigator.onLine) {
                 let code = localStorage.getItem("zip.min.js");
 
                 if (!code || !code.startsWith(ZIPJSVer)) {
@@ -494,6 +505,9 @@
             // END OF BOOTLOADER CODE
             // END OF BOOTLOADER CODE
             // END OF BOOTLOADER CODE
+            } catch (error) {
+                panic(error);
+            }
         }
     </script>
 </body>
