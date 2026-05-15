@@ -15,6 +15,7 @@
             rel="stylesheet">
         <script src="https://unpkg.com/fast-average-color/dist/index.browser.min.js"></script>
         <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+        <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
         <style>
             :root {
                 --acc: 255, 255, 255;
@@ -237,7 +238,19 @@
             },
             normalizeUserPath: function (path) {
                 return sys.userPath + path;
-            }
+            },
+            uploadFileFromBrowser: async function () {
+                return new Promise((resolve, reject) => {
+                    const input = UI.create('input', document.body, 'hide');
+                    input.type = "file";
+                    input.addEventListener("change", async function () {
+                        const isImage = this.files[0].type.startsWith("image");
+                        const content = isImage ? this.files[0] : await this.files[0].text();
+                        resolve({ isImage: isImage, file: this.files[0], content: content });
+                    });
+                    input.click();
+                })
+            },
         };
 
         // LITERALLY COPIED from WebDesk 0.3.3's previous rebuild
@@ -254,7 +267,7 @@
                         sys.config = JSON.parse(raw);
                         console.log(sys.config);
                     } catch (e) {
-                        if (core.debug === true) console.log(e);
+                        if (WD.debug === true) console.log(e);
                         sys.config = {};
                     }
                 }
@@ -297,15 +310,15 @@
                             sys.contacts = JSON.parse(raw);
                             console.log(sys.contacts);
                         } catch (e) {
-                            if (core.debug === true) console.log(e);
+                            if (WD.debug === true) console.log(e);
                             sys.contacts = {};
                         }
                     }
                 },
-                async add(userName, details) {
+                async add(username, details) {
                     try {
                         await this.ensureContactsLoaded();
-                        sys.contacts[userName] = { userName: userName, details: details };
+                        sys.contacts[username] = { username: username, details: details };
                         await FS.write(FS.normalizeUserPath('config/contacts.json'), JSON.stringify(sys.contacts), 'text');
                         return true;
                     } catch (error) {
@@ -313,10 +326,10 @@
                         return false;
                     }
                 },
-                async remove(userName) {
+                async remove(username) {
                     try {
                         await this.ensureContactsLoaded();
-                        delete sys.contacts[userName];
+                        delete sys.contacts[username];
                         await FS.write(FS.normalizeUserPath('config/contacts.json'), JSON.stringify(sys.contacts), 'text');
                         return true;
                     } catch (error) {
@@ -328,25 +341,62 @@
                     await this.ensureContactsLoaded();
                     return sys.contacts;
                 },
-                async read(userName) {
+                async read(username) {
                     await this.ensureContactsLoaded();
-                    return sys.contacts[userName];
+                    return sys.contacts[username];
                 },
             }
         };
     </script>
     <script>
+        function gen(length) {
+            if (length <= 0) {
+                console.error('Length should be greater than 0');
+                return null;
+            }
+
+            const min = Math.pow(10, length - 1);
+            const max = Math.pow(10, length) - 1;
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
         var sys = {
             userPath: "/home/user/",
             config: undefined,
             webid: {
-                
+
             }
         }
 
-        var core = {
+        var WD = {
             onlined: {
-                messages: undefined
+                messages: undefined,
+                active: false,
+            },
+            LLM: {
+                loaded: false,
+                sendToLLM: async function (messages, userContent, token, temp, top_p) {
+                    try {
+                        const result = await WD.LLM.module.send(messages, userContent, token, temp, top_p);
+                        if (result && result.responseMessage) {
+                            return result.responseMessage;
+                        } else {
+                            throw new Error("<!> No response from LLM");
+                        }
+                    } catch (error) {
+                        console.error("<!> Error sending to LLM:", error);
+                        throw new Error("Error sending to LLM");
+                    }
+                },
+                stopLLMGeneration: async function () {
+                    try {
+                        const result = await WD.LLM.module.stopGenerating();
+                        return true;
+                    } catch (error) {
+                        console.error("<!> Error sending to LLM:", error);
+                        throw new Error("Error sending to LLM");
+                    }
+                },
             },
             mobile: false,
             debug: true,
@@ -356,6 +406,10 @@
             tasks: [],
             onTaskStart: [],
             onTaskClosed: [],
+            async OCR(imageURL) {
+                const rec = await Tesseract.recognize(imageURL, "eng", { logger: m => console.log(m) })
+                return rec.data.text;
+            },
             async loadScript(data2, path) {
                 console.log('<i> Loading JS: ' + path);
                 if (path === true) {
@@ -396,14 +450,14 @@
                 const url = URL.createObjectURL(blob);
                 const mod = await import(url);
 
-                core.tasks = core.tasks || {};
-                core.tasks[id] = {
+                WD.tasks = WD.tasks || {};
+                WD.tasks[id] = {
                     name: mod.name || 'Unnamed Module',
                     id,
                     task: mod
                 };
 
-                console.log(core.tasks[id]);
+                console.log(WD.tasks[id]);
 
                 const task = { name: mod.name || 'Unnamed Module', id, task: mod };
                 this.tasks.push(task);
@@ -419,12 +473,12 @@
                     this.onTaskClosed.forEach(cb => cb.callback(id));
                 }
 
-                if (core.tasks && core.tasks[id]) {
-                    delete core.tasks[id];
+                if (WD.tasks && WD.tasks[id]) {
+                    delete WD.tasks[id];
                 }
             },
             async loadApp(path) {
-                const app = await core.loadModule(path, true);
+                const app = await WD.loadModule(path, true);
                 return app;
             }
         }
@@ -440,9 +494,9 @@
                         const res = await fetch("./zip.min.js");
                         code = await res.text();
                         localStorage.setItem("zip.min.js", code);
-                        await core.loadScript(code);
+                        await WD.loadScript(code);
                     } else {
-                        await core.loadScript(code);
+                        await WD.loadScript(code);
                     }
                 } else {
                     const code = localStorage.getItem("zip.min.js");
@@ -450,7 +504,7 @@
                         console.log("<!> It's over");
                         overzip = true;
                     } else {
-                        await core.loadScript(code);
+                        await WD.loadScript(code);
                     }
                 }
 
@@ -504,7 +558,7 @@
 
                         await reader.close();
                         console.log('<i> Starting post-install config');
-                        await core.loadScript('/system/configure.js', true);
+                        await WD.loadScript('/system/configure.js', true);
                         await regSetup();
                         console.log('<i> Install successful');
                         await FS.write('/system/version', version);
@@ -517,10 +571,10 @@
                 async function init() {
                     try {
                         console.log('<i> Starting WebDesk...');
-                        await core.loadScript('/system/ui.js', true);
-                        await core.loadStyle('/system/styles.css', true);
+                        await WD.loadScript('/system/ui.js', true);
+                        await WD.loadStyle('/system/styles.css', true);
                         console.log(`<i> Initializing Material UI...`);
-                        await core.loadScript('/system/mui.js', true);
+                        await WD.loadScript('/system/mui.js', true);
                         await UI.initialize();
 
                         // variables
@@ -540,14 +594,15 @@
                             UI.system.changeCSSVar('md-ref-typeface-plain', font);
                         });
                         await set.read('mobile').then(mobile => {
-                            if (mobile === "true") core.mobile = true;
+                            if (mobile === "true") WD.mobile = true;
                         });
 
-                        const Launcher = await core.loadModule('/system/apps/Launcher.app/index.js', true);
-                        const editor = await Launcher.launch(FS, UI, core);
-                        await core.loadScript('/system/init.js', true);
-                        const onlined = await core.loadModule('/system/apps/onlined.app/index.js', true);
-                        await onlined.launch(FS, UI, core);
+                        const Launcher = await WD.loadModule('/system/apps/Launcher.app/index.js', true);
+                        const editor = await Launcher.launch(FS, UI, WD);
+                        await WD.loadScript('/system/init.js', true);
+                        const onlined = await WD.loadModule('/system/services/onlined.app/index.js', true);
+                        await onlined.launch(FS, UI, WD, sys.webid);
+                        UI.systemElements.notifArea = UI.create('div', document.body, 'notif-pane');
                         UI.anims.fadeOut(document.getElementById('webdesk-loading')).then(() => document.getElementById('webdesk-loading').remove());
                     } catch (error) {
                         panic(error);

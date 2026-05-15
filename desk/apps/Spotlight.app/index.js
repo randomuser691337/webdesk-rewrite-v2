@@ -17,7 +17,7 @@ async function keyDown(event) {
     }
 }
 
-export async function launch(FS, UI, core) {
+export async function launch(FS, UI, WD) {
     function leftRightUpdate(resultsInfo, count, text) {
         resultsInfo.left.innerHTML = '';
         resultsInfo.right.innerHTML = '';
@@ -35,7 +35,7 @@ export async function launch(FS, UI, core) {
     }
 
     document.addEventListener('keydown', (event) => keyDown(event));
-    reIndex(UI, FS, core);
+    reIndex(UI, FS, WD);
     spotDivCont = UI.create('div', document.body, 'spotlight-flex-container');
     spotDivCont.addEventListener('click', function (event) {
         if (event.target === spotDivCont) {
@@ -177,13 +177,13 @@ export async function launch(FS, UI, core) {
     });
 
     codeToKillTask = function () {
-        core.removeModule(id);
+        WD.removeModule(id);
         UI.remove(spotDivCont);
         document.removeEventListener('keydown', (event) => keyDown(event));
     }
 }
 
-export async function reIndex(UI, FS, core) {
+export async function reIndex(UI, FS, WD) {
     const processing = [];
     const ignoreList = await FS.read('/apps/Spotlight.app/spotlight-ignore.json');
     const ignore = JSON.parse(ignoreList);

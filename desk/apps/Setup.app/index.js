@@ -1,6 +1,6 @@
 export var name = "Setup";
 
-export async function launch(FS, UI, core) {
+export async function launch(FS, UI, WD) {
     const backgroundDiv = UI.create('div', document.body, 'setup-flex-container');
     backgroundDiv.style.zIndex = "999999999999";
     const styles = UI.create('style', backgroundDiv, 'hide');
@@ -88,8 +88,8 @@ export async function launch(FS, UI, core) {
 
             const createBtn = UI.button('Create Account', newPane, 'md-filled-button');
             createBtn.addEventListener('click', function () {
-                core.socket.emit('newacc', { user: usernameInput.value, pass: passwordInput.value });
-                core.socket.on('token', async function (token) {
+                WD.socket.emit('newacc', { user: usernameInput.value, pass: passwordInput.value });
+                WD.socket.on('token', async function (token) {
                     await FS.write(FS.normalizeUserPath('config/token'), token.token);
                     await set.write('setupdone', 'true');
                     const newPane2 = await panes.setupDone();
@@ -100,7 +100,7 @@ export async function launch(FS, UI, core) {
                     });
                 });
 
-                core.socket.on('logininstead', async function (token) {
+                WD.socket.on('logininstead', async function (token) {
                     const dialog = UI.create('div', document.body, 'dialog-box');
                     UI.text('Login as ' + usernameInput.value + "?", dialog, 'bold');
                     UI.text('This account already exists.', dialog);
@@ -114,7 +114,7 @@ export async function launch(FS, UI, core) {
 
                     const select = UI.button('Login', buttonCont, 'md-filled-button', 'flex-grow-1');
                     select.addEventListener('click', async function () {
-                        core.socket.emit('signin', { user: usernameInput.value, pass: passwordInput.value });
+                        WD.socket.emit('signin', { user: usernameInput.value, pass: passwordInput.value });
                         UI.anims.fadeOut(dialog).then(() => dialog.remove());
                     });
                 });

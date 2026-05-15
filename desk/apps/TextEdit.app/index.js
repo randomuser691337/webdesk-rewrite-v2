@@ -1,9 +1,9 @@
 export var name = "TextEdit";
 
-export async function launch(FS, UI, core) {
-    const mod = await core.loadModule('/apps/Files.app/index.js', true);
+export async function launch(FS, UI, WD) {
+    const mod = await WD.loadModule('/apps/Files.app/index.js', true);
     console.log(mod);
-    const filePicker = await mod.pickFile(FS, UI, core, { name: "TextEdit" });
+    const filePicker = await mod.pickFile(FS, UI, WD, { name: "TextEdit" });
     if (filePicker !== false) {
         editor(filePicker.path);
     }
@@ -11,15 +11,16 @@ export async function launch(FS, UI, core) {
 
 export async function editor(path, contents) {
     const textedit = UI.window('TextEdit');
-    const AceModule = await core.loadModule('/system/ace-rebuild.js', true);
+    const AceModule = await WD.loadModule('/system/ace-rebuild.js', true);
     console.log(AceModule);
-    if (core.mobile === false) {
+    if (WD.mobile === false) {
         textedit.main.content.style.height = "400px";
         textedit.main.window.style.width = "480px";
     }
     textedit.finish();
     textedit.titlebar.text.innerHTML = "";
     textedit.titlebar.main.style.padding = "var(--padding-small)";
+    textedit.main.window.style.overflow = "hidden";
     const textarea = ace.edit(textedit.main.content);
     if (contents && contents !== undefined) {
         textarea.setValue(contents, -1);
@@ -97,8 +98,8 @@ export async function editor(path, contents) {
 
             const filebtn = UI.button('Open File...', ctx.menu, 'button', 'list-button');
             filebtn.addEventListener('mouseup', async function () {
-                let thing = await core.loadModule('/apps/TextEdit.app/index.js', true);
-                await thing.launch(FS, UI, core);
+                let thing = await WD.loadModule('/apps/TextEdit.app/index.js', true);
+                await thing.launch(FS, UI, WD);
                 thing = undefined;
             });
 

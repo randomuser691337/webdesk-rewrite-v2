@@ -78,33 +78,54 @@ var FS = {
     },
     delete: async function (path) {
         try {
-            async function checkOld() {
-                try {
-                    let current = metaDir;
-                    const parts = path.split("/").filter(Boolean);
-                    for (let i = 0; i < parts.length - 1; i++) {
-                        current = await current.getDirectoryHandle(parts[i]);
+            async function removeTree(dirHandle) {
+                for await (const [name, handle] of dirHandle.entries()) {
+                    if (handle.kind === "file") {
+                        await dirHandle.removeEntry(name);
+                    } else if (handle.kind === "directory") {
+                        const subDir = await dirHandle.getDirectoryHandle(name);
+                        await removeTree(subDir);
+                        await dirHandle.removeEntry(name, { recursive: true });
                     }
-                    const file = await current.getFileHandle(parts.at(-1));
-                    const data = await file.getFile();
-                    const uid = await data.text();
-                    FS.switchdelete(path, metaDir);
-                    return uid;
-                } catch (error) {
-                    // console.log(error);
-                    return false;
                 }
             }
+            let current = metaDir;
+            const parts = path.split("/").filter(Boolean);
 
-            let fileuID = await checkOld();
-            if (fileuID === false) {
-                return false;
-            } else {
-                FS.switchdelete(fileuID, dataDir);
+            for (let i = 0; i < parts.length - 1; i++) {
+                current = await current.getDirectoryHandle(parts[i]);
+            }
+
+            const name = parts.at(-1);
+
+            // check if directory
+            let isDir = false;
+            try {
+                await current.getDirectoryHandle(name);
+                isDir = true;
+            } catch { }
+
+            if (isDir) {
+                const dirHandle = await current.getDirectoryHandle(name);
+
+                // delete meta tree
+                await removeTree(dirHandle);
+                await current.removeEntry(name, { recursive: true });
+
                 return true;
             }
+
+            // ---- FILE DELETE (your existing logic) ----
+            const file = await current.getFileHandle(name);
+            const data = await file.getFile();
+            const uid = await data.text();
+
+            await FS.switchdelete(path, metaDir);
+            await FS.switchdelete(uid, dataDir);
+
+            return true;
+
         } catch (error) {
-            // console.log(error);
             return false;
         }
     },

@@ -1,6 +1,25 @@
 var windowArray = []
 
 var UI = {
+    create: function (elType, parent, classList) {
+        /* create(elType, parent, classList) documentation
+            - create elType parameter: Element tag (like div/lists)
+            - create parent parameter: The element's parent (like document.body or another div)
+            - create classList parameter: The element's classes, like "column-button-container" or something
+            - create(elType, parent, classList) simply returns the element
+            - Usage example:
+                const element = UI.create('div', document.body, 'test-div');
+                UI.text('It works!', element);
+        */
+        const el = document.createElement(elType);
+        el.classList = classList;
+        if (parent instanceof HTMLElement) {
+            parent.appendChild(el);
+        } else {
+            console.log(el + " has no valid parent!");
+        }
+        return el;
+    },
     animSpeed: {
         slow: 0.3,
         med: 0.2,
@@ -11,6 +30,7 @@ var UI = {
 
         },
         taskbarAppButtonList: undefined,
+        notifArea: undefined,
     },
     events: {
         onRemove: function (targetElement) {
@@ -64,6 +84,53 @@ var UI = {
             });
         }
     },
+    getDate: function (type) {
+        const now = new Date();
+        if (type === "military") {
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        } else {
+            let hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            return `${hours}:${minutes} ${ampm}`;
+        }
+    },
+    notif: async function (title, body, icon) {
+        const notif = UI.create('div', UI.systemElements.notifArea, 'wd-notif');
+        const closeBtn = UI.button('x', notif, 'button', 'wd-notif-close-button');
+        closeBtn.addEventListener('click', () => {
+            UI.anims.fadeOut(notif).then(function () { notif.remove(); });
+        });
+        const wdNotifToast = UI.create('div', notif, 'wd-notif-toast');
+
+        /* let iconImg;
+        if (icon) {
+            iconImg = UI.img(wdNotifToast, icon, 'wd-notif-img');
+        } else {
+            iconImg = UI.img(wdNotifToast, '/system/lib/img/notification-toast.svg', 'wd-notif-img');
+        } */
+
+        const contents = UI.create('div', notif, 'wd-notif-contents');
+        const titleDiv = UI.create('div', contents, 'wd-notif-title');
+        const name = UI.create('div', titleDiv, 'wd-notif-title-name bold');
+        const time = UI.create('div', titleDiv, 'wd-notif-title-time smalltxt');
+        name.innerText = title;
+        time.innerText = UI.getDate();
+        const mainDiv = UI.create('div', contents);
+        if (body) {
+            mainDiv.innerText = body;
+        }
+
+        function removeNotif() {
+            notif.remove();
+        }
+
+        return notif, { notif, name, time, mainDiv, titleDiv, /* iconImg, wdNotifToast, */ contents, removeNotif }
+    },
     truncater: function (inputString, size, dots) {
         if (inputString.length <= size) {
             return inputString;
@@ -108,18 +175,6 @@ var UI = {
             set.write('material-hex', color.hex);
             UI.system.applyTheme(color.hex, color.hex, color.isDark);
         }
-    },
-    uploadFileFromBrowser: async function () {
-        return new Promise((resolve, reject) => {
-            const input = UI.create('input', document.body, 'hide');
-            input.type = "file";
-            input.addEventListener("change", async function () {
-                const isImage = this.files[0].type.startsWith("image");
-                const content = isImage ? this.files[0] : await this.files[0].text();
-                resolve({ isImage: isImage, file: this.files[0], content: content });
-            });
-            input.click();
-        })
     },
     reorg: function (element, type) {
         const buttons = Array.from(element.querySelectorAll(type));
@@ -195,9 +250,9 @@ var UI = {
 
         if (type === "text") {
             const editorApp = await set.read('WDDefaultEditor');
-            if (core.debug === true) console.log(editorApp);
-            const TextEditor = await core.loadModule(`${editorApp}`, true);
-            if (core.debug === true) console.log(TextEditor);
+            if (WD.debug === true) console.log(editorApp);
+            const TextEditor = await WD.loadModule(`${editorApp}`, true);
+            if (WD.debug === true) console.log(TextEditor);
             TextEditor.editor(path);
         } else {
 
@@ -260,25 +315,6 @@ var UI = {
 
             return { item: item, headline, supportingText, trailingSupportingText };
         }
-    },
-    create: function (elType, parent, classList) {
-        /* create(elType, parent, classList) documentation
-            - create elType parameter: Element tag (like div/lists)
-            - create parent parameter: The element's parent (like document.body or another div)
-            - create classList parameter: The element's classes, like "column-button-container" or something
-            - create(elType, parent, classList) simply returns the element
-            - Usage example:
-                const element = UI.create('div', document.body, 'test-div');
-                UI.text('It works!', element);
-        */
-        const el = document.createElement(elType);
-        el.classList = classList;
-        if (parent instanceof HTMLElement) {
-            parent.appendChild(el);
-        } else {
-            console.log(el + " has no valid parent!");
-        }
-        return el;
     },
     container: function (options, parent, classList) {
         // tbd
@@ -429,7 +465,7 @@ var UI = {
         if (title) titleBarText.innerText = title;
 
         const content = this.create('div', win, 'window-content');
-        if (core.mobile === true) {
+        if (WD.mobile === true) {
             win.style = `left: 0px !important; top: 0px; !important; right: 0px !important; width: 100% !important; bottom: ${UI.systemElements.rect.shelf.height}px !important; border-radius: 0px !important; box-shadow: none !important;`
         }
 
@@ -437,7 +473,7 @@ var UI = {
 
         function finish() {
             win.style.display = "flex";
-            if (core.mobile === false) {
+            if (WD.mobile === false) {
                 win.style.left = (window.innerWidth - win.getBoundingClientRect().width) / 2 + "px";
                 win.style.top = (window.innerHeight - win.getBoundingClientRect().height) / 2 + "px";
 
@@ -481,7 +517,7 @@ var UI = {
 
         const target = dragHandle || elmnt;
 
-        if (core.mobile === false) {
+        if (WD.mobile === false) {
             target.addEventListener("mousedown", dragStart);
             target.addEventListener("touchstart", dragStart, { passive: false });
         }

@@ -1,14 +1,14 @@
 export var name = "Preview";
 var win;
-var core2;
+var WD2;
 
-export async function launch(FS, UI, core, path) {
-    core2 = core;
+export async function launch(FS, UI, WD, path) {
+    WD2 = WD;
     async function open(data, isBlobContents, title = "Preview") {
         var contents;
-        win = UI.window(path, core.tasks[id].task);
+        win = UI.window(path, WD.tasks[id].task);
         win.main.content.style = "backdrop-filter: blur(0px); padding: 0px";
-        if (core.mobile === false) { win.main.window.style.width = "450px"; }
+        if (WD.mobile === false) { win.main.window.style.width = "450px"; }
         win.finish();
 
         const img = new Image();
@@ -39,8 +39,8 @@ export async function launch(FS, UI, core, path) {
 
     if (!path) {
         const code = await FS.read('/apps/Files.app/index.js');
-        const mod = await core.loadModule(code);
-        const path = await mod.pickFile(FS, UI, core, { name: "Preview" });
+        const mod = await WD.loadModule(code);
+        const path = await mod.pickFile(FS, UI, WD, { name: "Preview" });
         if (path) {
             await open(path.path, false, path);
         } else {

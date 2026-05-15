@@ -1,8 +1,8 @@
 export var name = "LiveCSS";
 
-export async function launch(FS, UI, core) {
+export async function launch(FS, UI, WD) {
     const textedit = UI.window('LiveCSS');
-    const AceModule = await core.loadModule('/system/ace-rebuild.js', true);
+    const AceModule = await WD.loadModule('/system/ace-rebuild.js', true);
     console.log(AceModule);
     const textarea = ace.edit(textedit.main.content);
     const style = UI.create('style', document.body);
@@ -11,7 +11,7 @@ export async function launch(FS, UI, core) {
         fontSize: "12px"
     });
 
-    if (core.mobile === false) {
+    if (WD.mobile === false) {
         textedit.main.content.style.height = "400px";
         textedit.main.window.style.width = "480px";
     }
@@ -79,8 +79,8 @@ export async function launch(FS, UI, core) {
 
             const filebtn = UI.button('Open File...', ctx.menu, 'button', 'list-button');
             filebtn.addEventListener('mouseup', async function () {
-                let thing = await core.loadModule('/apps/TextEdit.app/index.js', true);
-                await thing.launch(FS, UI, core);
+                let thing = await WD.loadModule('/apps/TextEdit.app/index.js', true);
+                await thing.launch(FS, UI, WD);
                 thing = undefined;
             });
 

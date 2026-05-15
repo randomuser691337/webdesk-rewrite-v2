@@ -1,20 +1,20 @@
 export var name = "Launcher";
 var win;
 var launcherOpen;
-export async function launch(FS, UI, core) {
+export async function launch(FS, UI, WD) {
     const shelf = UI.create('div', document.body, 'shelf');
     const layout = UI.leftRightLayout(undefined, shelf);
     shelf.style.zIndex = "999999999999";
 
-    if (core.mobile === true) shelf.style.borderRadius = "0px"; shelf.style.borderTop = "1px solid rgba(var(--ui-1)";
+    if (WD.mobile === true) shelf.style.borderRadius = "0px"; shelf.style.borderTop = "1px solid rgba(var(--ui-1)";
 
     const startBtn = UI.button('', layout.left, 'button', 'shelf-button');
     UI.create('div', UI.create('div', startBtn, 'shelf-button-layer-2'), 'shelf-button-layer-3');
     startBtn.addEventListener('click', async function () {
         const rect = await shelf.getBoundingClientRect();
         UI.systemElements.rect.shelf = rect;
-        if (core.debug === true) console.log(rect);
-        await launcher(FS, UI, core, rect);
+        if (WD.debug === true) console.log(rect);
+        await launcher(FS, UI, WD, rect);
     });
 
     UI.systemElements.taskbarAppButtonList = UI.create('div', layout.left, 'button-list-horizontal');
@@ -23,15 +23,15 @@ export async function launch(FS, UI, core) {
     controlsBtn.addEventListener('click', async function () {
         const rect = await shelf.getBoundingClientRect();
         UI.systemElements.rect.shelf = rect;
-        if (core.debug === true) console.log(rect);
-        await launcher(FS, UI, core, rect);
+        if (WD.debug === true) console.log(rect);
+        await launcher(FS, UI, WD, rect);
     });
 
     const rect = await shelf.getBoundingClientRect();
     UI.systemElements.rect.shelf = rect;
 }
 
-export async function launcher(FS, UI, core, shelfRect) {
+export async function launcher(FS, UI, WD, shelfRect) {
     function removeLauncher() {
         launcherOpen = false;
         Animate(win, { opacity: [1, 0] }, { ease: "easeInOut", duration: UI.animSpeed.fast }).then(() => win.remove());
@@ -44,7 +44,7 @@ export async function launcher(FS, UI, core, shelfRect) {
     }
     win = UI.create('div', document.body, 'window');
     win.style.zIndex = "999999999999";
-    if (core.mobile === true) {
+    if (WD.mobile === true) {
         win.style.top = "4px";
         win.style.right = "4px";
         win.style.width = "auto";
@@ -79,8 +79,8 @@ export async function launcher(FS, UI, core, shelfRect) {
             btn.addEventListener('click', async function () {
                 if (file.kind === "directory") {
                     removeLauncher();
-                    const app = await core.loadModule(file.path + "/index.js", true);
-                    const editor = await app.launch(FS, UI, core);
+                    const app = await WD.loadModule(file.path + "/index.js", true);
+                    const editor = await app.launch(FS, UI, WD);
                 }
             });
         });
@@ -105,6 +105,6 @@ export async function launcher(FS, UI, core, shelfRect) {
     await refreshLauncher();
 }
 
-export async function close(FS, UI, core) {
-    if (core.debug === true) console.log(`<!> Terminating desktop...`);
+export async function close(FS, UI, WD) {
+    if (WD.debug === true) console.log(`<!> Terminating desktop...`);
 }

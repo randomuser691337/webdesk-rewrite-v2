@@ -1,7 +1,7 @@
-export async function launch(FS, UI, core, path) {
+export async function launch(FS, UI, WD, path) {
     const win = UI.window('Files');
     var dblClick = "dblclick";
-    if (core.mobile === false) {
+    if (WD.mobile === false) {
         win.main.window.style.height = "300px";
         win.main.window.style.width = "300px";
     } else {
@@ -17,10 +17,52 @@ export async function launch(FS, UI, core, path) {
         const upBtn = UI.button('Upload file here', menu.menu, 'button', 'list-button');
         upBtn.addEventListener('click', async function (event) {
             menu.closeMenu(document.body);
-            const upload = await UI.uploadFileFromBrowser();
+            const upload = await FS.uploadFileFromBrowser();
             if (upload.file) {
                 await FS.write(currentPath + upload.file.name, upload.content, upload.isImage ? "blob" : "text");
             }
+        });
+        const foldBtn = UI.button('New Folder', menu.menu, 'button', 'list-button');
+        foldBtn.addEventListener('click', async function (event) {
+            menu.closeMenu(document.body);
+            const input = UI.create('input', filesView, 'small-button wide');
+            input.placeholder = "Folder name";
+            input.focus();
+            input.addEventListener('keydown', async (e) => {
+                if (e.key === 'Enter') {
+                    const newDir = currentPath + input.value;
+                    await FS.mkdir(newDir);
+                    await nav(newDir);
+                }
+                if (e.key === 'Escape' || e.key === 'Esc') {
+                    input.remove();
+                }
+            });
+
+            input.addEventListener('blur', () => {
+                input.remove();
+            });
+        });
+        const fileBtn = UI.button('New Text File', menu.menu, 'button', 'list-button');
+        fileBtn.addEventListener('click', async function (event) {
+            menu.closeMenu(document.body);
+            const input = UI.create('input', filesView, 'small-button wide');
+            input.placeholder = "Folder name";
+            input.focus();
+            input.addEventListener('keydown', async (e) => {
+                if (e.key === 'Enter') {
+                    const newDir = currentPath + input.value;
+                    await FS.write(newDir, '')
+                    await nav(currentPath);
+                }
+                if (e.key === 'Escape' || e.key === 'Esc') {
+                    input.remove();
+                }
+            });
+
+            input.addEventListener('blur', () => {
+                input.remove();
+            });
         });
         menu.finish();
     });
@@ -117,9 +159,9 @@ export async function launch(FS, UI, core, path) {
     win.finish();
 }
 
-export async function pickFile(FS, UI, core, parameters) {
+export async function pickFile(FS, UI, WD, parameters) {
     /* PICKER API DOCUMENTATION
-    - example: pickFile(FS, UI, core, { name: "Application name" })
+    - example: pickFile(FS, UI, WD, { name: "Application name" })
     - parameters.name
         - must be set
         - app name
@@ -131,7 +173,7 @@ export async function pickFile(FS, UI, core, parameters) {
     return new Promise((resolve, reject) => {
         const win = UI.window('File Picker - ' + parameters.name);
         var dblClick = "dblclick";
-        if (core.mobile === false) {
+        if (WD.mobile === false) {
             win.main.window.style.height = "300px";
             win.main.window.style.width = "300px";
         } else {
@@ -140,7 +182,65 @@ export async function pickFile(FS, UI, core, parameters) {
 
         const filesView = UI.create('div', win.main.content);
         filesView.style.padding = "0px";
+        var currentPath = "";
+        const plusButton = UI.dangerousButton(`<md-icon>add</md-icon>`, undefined, 'md-filled-tonal-icon-button', 'window-mgmt-button');
+        win.titlebar.buttons.prepend(plusButton);
+        plusButton.addEventListener('click', async function (event) {
+            const menu = UI.contextMenu(event);
+            const upBtn = UI.button('Upload file here', menu.menu, 'button', 'list-button');
+            upBtn.addEventListener('click', async function (event) {
+                menu.closeMenu(document.body);
+                const upload = await FS.uploadFileFromBrowser();
+                if (upload.file) {
+                    await FS.write(currentPath + upload.file.name, upload.content, upload.isImage ? "blob" : "text");
+                }
+            });
+            const foldBtn = UI.button('New Folder', menu.menu, 'button', 'list-button');
+            foldBtn.addEventListener('click', async function (event) {
+                menu.closeMenu(document.body);
+                const input = UI.create('input', filesView, 'small-button wide');
+                input.placeholder = "Folder name";
+                input.focus();
+                input.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter') {
+                        const newDir = currentPath + input.value;
+                        await FS.mkdir(newDir);
+                        await nav(newDir);
+                    }
+                    if (e.key === 'Escape' || e.key === 'Esc') {
+                        input.remove();
+                    }
+                });
+
+                input.addEventListener('blur', () => {
+                    input.remove();
+                });
+            });
+            const fileBtn = UI.button('New Text File', menu.menu, 'button', 'list-button');
+            fileBtn.addEventListener('click', async function (event) {
+                menu.closeMenu(document.body);
+                const input = UI.create('input', filesView, 'small-button wide');
+                input.placeholder = "Folder name";
+                input.focus();
+                input.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter') {
+                        const newDir = currentPath + input.value;
+                        await FS.write(newDir, '')
+                        await nav(currentPath);
+                    }
+                    if (e.key === 'Escape' || e.key === 'Esc') {
+                        input.remove();
+                    }
+                });
+
+                input.addEventListener('blur', () => {
+                    input.remove();
+                });
+            });
+            menu.finish();
+        });
         async function nav(path) {
+            currentPath = "";
             const fileList = await FS.ls(path);
             filesView.innerHTML = "";
             if (parameters.type === "folder") {
@@ -182,7 +282,6 @@ export async function pickFile(FS, UI, core, parameters) {
             const trimmedPath = path.replace(/\/+$/, '');
             const parts = trimmedPath.split('/').filter(Boolean);
 
-            let currentPath = '';
             const breadcrumbs = [];
 
             parts.forEach((part, index) => {
@@ -200,6 +299,9 @@ export async function pickFile(FS, UI, core, parameters) {
 
                 breadcrumbs.push(button);
             });
+
+            if (!currentPath.endsWith('/')) currentPath = currentPath + "/";
+
             Object.values(fileList).forEach(function (file) {
                 const btn = UI.button('', filesView, 'button', 'list-button');
                 console.log(btn);

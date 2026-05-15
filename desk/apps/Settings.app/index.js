@@ -1,9 +1,9 @@
-export async function launch(FS, UI, core) {
+export async function launch(FS, UI, WD) {
     // Corrected by AI:
     // - Breadcrumbs
     // - Temporary stylings
     const win = UI.window('Settings');
-    if (core.mobile === false) {
+    if (WD.mobile === false) {
         win.main.window.style.width = "380px";
         win.main.window.style.maxHeight = "540px";
     }
@@ -144,7 +144,7 @@ export async function launch(FS, UI, core) {
             });
             const wall = UI.button('Upload Wallpaper', buttonCont2, 'md-filled-button', 'flex-grow-1');
             wall.addEventListener('click', async function () {
-                const upload = await UI.uploadFileFromBrowser();
+                const upload = await FS.uploadFileFromBrowser();
                 if (upload.file && upload.isImage === true) {
                     await FS.write(FS.normalizeUserPath('config/wallpaper'), upload.content, "blob");
                     await UI.initialize();
