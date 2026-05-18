@@ -14,7 +14,7 @@ export async function launch(FS, UI, WD, path) {
 
     const openExisting = UI.button('Open Existing', buttonCont, 'md-outlined-button');
     openExisting.addEventListener('click', async function () {
-        const picker = await WD.loadApp('/apps/Files.app/index.js');
+        const picker = await WD.loadApp('/apps/Files-1779048116446.app/index.js');
         const file = await picker.pickFile(FS, UI, WD, { name: "DeskIDE", type: "folder" });
         if (file) {
             await deskide(FS, UI, WD, file.path);
@@ -122,7 +122,7 @@ export async function deskide(FS, UI, WD, path) {
             const open = UI.button('Open Folder', ctx.menu, 'button', 'list-button');
             open.addEventListener('mouseup', async function () {
                 closeMenu();
-                let thing = await WD.loadModule('/apps/DeskIDE.app/index.js', true);
+                let thing = await WD.loadModule('/apps/DeskIDE-1779047593382.app/index.js', true);
                 await thing.launch(FS, UI, WD, path);
                 window.main.window.remove();
             });
@@ -130,14 +130,14 @@ export async function deskide(FS, UI, WD, path) {
             const newWindow = UI.button('Open Folder in New Window', ctx.menu, 'button', 'list-button');
             newWindow.addEventListener('mouseup', async function () {
                 closeMenu();
-                let thing = await WD.loadModule('/apps/DeskIDE.app/index.js', true);
+                let thing = await WD.loadModule('/apps/DeskIDE-1779047593382.app/index.js', true);
                 await thing.launch(FS, UI, WD, path);
             });
 
             const fileTextEditbtn = UI.button('Open Folder in Files', ctx.menu, 'button', 'list-button');
             fileTextEditbtn.addEventListener('mouseup', async function () {
                 closeMenu();
-                let thing = await WD.loadModule('/apps/Files.app/index.js', true);
+                let thing = await WD.loadModule('/apps/Files-1779048116446.app/index.js', true);
                 await thing.launch(FS, UI, WD, path);
             });
 
@@ -323,7 +323,7 @@ export async function deskide(FS, UI, WD, path) {
                 const newWindow = UI.button('New Window', ctx.menu, 'button', 'list-button');
                 newWindow.addEventListener('mouseup', async function () {
                     closeMenu();
-                    let thing = await WD.loadModule('/apps/DeskIDE.app/index.js', true);
+                    let thing = await WD.loadModule('/apps/DeskIDE-1779047593382.app/index.js', true);
                     await thing.launch(FS, UI, WD);
                 });
 
@@ -332,7 +332,7 @@ export async function deskide(FS, UI, WD, path) {
                 const filebtn = UI.button('Open File...', ctx.menu, 'button', 'list-button');
                 filebtn.addEventListener('mouseup', async function () {
                     closeMenu();
-                    const mod = await WD.loadModule('/apps/Files.app/index.js', true);
+                    const mod = await WD.loadModule('/apps/Files-1779048116446.app/index.js', true);
                     const filePicker = await mod.pickFile(FS, UI, WD, { name: "DeskIDE" });
                     if (filePicker !== false) {
                         openNewEditor(filePicker.path);
@@ -342,7 +342,7 @@ export async function deskide(FS, UI, WD, path) {
                 const fileTextEditbtn = UI.button('Open File in TextEdit...', ctx.menu, 'button', 'list-button');
                 fileTextEditbtn.addEventListener('mouseup', async function () {
                     closeMenu();
-                    let thing = await WD.loadModule('/apps/TextEdit.app/index.js', true);
+                    let thing = await WD.loadModule('/apps/TextEdit-1779048336412.app/index.js', true);
                     await thing.launch(FS, UI, WD);
                 });
 
@@ -429,14 +429,14 @@ export async function deskide(FS, UI, WD, path) {
                 restartDeskIDE.addEventListener('mouseup', async function () {
                     closeMenu();
                     window.main.window.remove();
-                    let thing = await WD.loadModule('/apps/DeskIDE.app/index.js', true);
+                    let thing = await WD.loadModule('/apps/DeskIDE-1779047593382.app/index.js', true);
                     await thing.launch(FS, UI, WD);
                 });
 
                 const LiveCSSbtn = UI.button('LiveCSS', ctx.menu, 'button', 'list-button');
                 LiveCSSbtn.addEventListener('mouseup', async function () {
                     closeMenu();
-                    let thing = await WD.loadModule('/apps/DeskIDE.app/tools/LiveCSS.app/index.js', true);
+                    let thing = await WD.loadModule('/apps/DeskIDE-1779047593382.app/tools/LiveCSS.app/index.js', true);
                     await thing.launch(FS, UI, WD);
                 });
 
@@ -469,10 +469,10 @@ export async function deskide(FS, UI, WD, path) {
     }
 
     if (typeof path === "string") {
-        await openNewEditor('/apps/DeskIDE.app/placeholder.txt');
+        await openNewEditor('/apps/DeskIDE-1779047593382.app/placeholder.txt');
     } else {
-        path = "/apps/DeskIDE.app/";
-        await openNewEditor("/apps/DeskIDE.app/index.js");
+        path = "/apps/DeskIDE-1779047593382.app";
+        await openNewEditor("/apps/DeskIDE-1779047593382.app/index.js");
     }
 
     window.main.window.addEventListener('resize', function () {

@@ -38,7 +38,7 @@ export async function launch(FS, UI, WD, path) {
     }
 
     if (!path) {
-        const code = await FS.read('/apps/Files.app/index.js');
+        const code = await FS.read('/apps/Files-1779048116446.app/index.js');
         const mod = await WD.loadModule(code);
         const path = await mod.pickFile(FS, UI, WD, { name: "Preview" });
         if (path) {

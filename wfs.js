@@ -280,6 +280,16 @@ addEventListener('message', async event => {
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
 
         }
+    } else if (event.data.op === "parseConfig") {
+        try {
+            const wr = await FS.read(event.data.path);
+            const newThing = JSON.parse(wr);
+            self.postMessage({ opID: event.data.opID, op: event.data.op, contents: newThing, error: undefined });
+        } catch (error) {
+            // console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
+            self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
+
+        }
     } else if (event.data.op === "mkdir") {
         try {
             const wr = await FS.mkdir(event.data.path);

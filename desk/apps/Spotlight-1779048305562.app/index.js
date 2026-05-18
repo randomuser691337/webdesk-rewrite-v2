@@ -185,7 +185,7 @@ export async function launch(FS, UI, WD) {
 
 export async function reIndex(UI, FS, WD) {
     const processing = [];
-    const ignoreList = await FS.read('/apps/Spotlight.app/spotlight-ignore.json');
+    const ignoreList = await FS.read('/apps/Spotlight- 1779048305562.app/spotlight-ignore.json');
     const ignore = JSON.parse(ignoreList);
 
     // scanFS mostly written by ChatGPT

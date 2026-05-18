@@ -1,49 +1,30 @@
-export var name = "TextEdit";
+export var name = "LiveCSS";
 
 export async function launch(FS, UI, WD) {
-    const mod = await WD.loadModule('/apps/Files.app/index.js', true);
-    console.log(mod);
-    const filePicker = await mod.pickFile(FS, UI, WD, { name: "TextEdit" });
-    if (filePicker !== false) {
-        editor(filePicker.path);
-    }
-}
-
-export async function editor(path, contents) {
-    const textedit = UI.window('TextEdit');
+    const textedit = UI.window('LiveCSS');
     const AceModule = await WD.loadModule('/system/ace-rebuild.js', true);
     console.log(AceModule);
-    if (WD.mobile === false) {
-        textedit.main.content.style.height = "400px";
-        textedit.main.window.style.width = "480px";
-    }
-    textedit.finish();
-    textedit.titlebar.text.innerHTML = "";
-    textedit.titlebar.main.style.padding = "var(--padding-small)";
-    textedit.main.window.style.overflow = "hidden";
     const textarea = ace.edit(textedit.main.content);
-    if (contents && contents !== undefined) {
-        textarea.setValue(contents, -1);
-        textarea.session.getUndoManager().reset();
-    } else if (path) {
-        if (path.endsWith('.js') || path.endsWith('.js/')) {
-            textarea.session.setMode("ace/mode/javascript");
-        }
-        textarea.setValue(await FS.read(path), -1);
-        textarea.session.getUndoManager().reset();
-    } else {
-        textarea.placeholder = `Start typing... [New File]`;
-    }
-
+    const style = UI.create('style', document.body);
     textarea.setOptions({
         fontFamily: 'Roboto Mono',
         fontSize: "12px"
     });
 
+    if (WD.mobile === false) {
+        textedit.main.content.style.height = "400px";
+        textedit.main.window.style.width = "480px";
+    }
+    textedit.titlebar.text.innerHTML = "";
+    textedit.titlebar.main.style.padding = "var(--padding-small)";
     const buttonContainer = UI.container(undefined, textedit.titlebar.text, 'column-button-container full-width');
     var menuOpen = false;
     var menuCloseFunction = false;
     var menuName = undefined;
+
+    textarea.textInput.getElement().addEventListener('keydown', function (e) {
+        style.textContent = textarea.getSession().getValue();
+    });
 
     function closeMenu() {
         menuCloseFunction(document.body);
@@ -98,7 +79,7 @@ export async function editor(path, contents) {
 
             const filebtn = UI.button('Open File...', ctx.menu, 'button', 'list-button');
             filebtn.addEventListener('mouseup', async function () {
-                let thing = await WD.loadModule('/apps/TextEdit.app/index.js', true);
+                let thing = await WD.loadModule('/apps/TextEdit-1779048336412.app/index.js', true);
                 await thing.launch(FS, UI, WD);
                 thing = undefined;
             });
@@ -134,12 +115,6 @@ export async function editor(path, contents) {
             const findbtn = UI.button('Find', ctx.menu, 'button', 'list-button');
             findbtn.addEventListener('mouseup', async function () {
                 textarea.execCommand('find');
-                closeMenu();
-            });
-
-            const replacebtn = UI.button('Replace', ctx.menu, 'button', 'list-button');
-            replacebtn.addEventListener('mouseup', async function () {
-                currentEditor.execCommand('replace');
                 closeMenu();
             });
 
@@ -203,4 +178,5 @@ export async function editor(path, contents) {
     setupmousedown(selectionButton, 'Selection', menu.selection);
 
     textarea.resize();
+    textedit.finish();
 }

@@ -4,7 +4,7 @@ var launcherOpen;
 export async function launch(FS, UI, WD) {
     const shelf = UI.create('div', document.body, 'shelf');
     const layout = UI.leftRightLayout(undefined, shelf);
-    shelf.style.zIndex = "999999999999";
+    shelf.style.zIndex = "2147483620";
 
     if (WD.mobile === true) shelf.style.borderRadius = "0px"; shelf.style.borderTop = "1px solid rgba(var(--ui-1)";
 
@@ -65,21 +65,41 @@ export async function launcher(FS, UI, WD, shelfRect) {
     async function refreshLauncher() {
         const apps = await FS.ls('/apps/');
         filesView.innerHTML = "";
-        Object.values(apps).forEach(function (file) {
-            const btn = UI.button(file.name, filesView, 'md-filled-button');
+        Object.values(apps).forEach(async function (file) {
+            const manifest = JSON.parse(await FS.read(file.path + "/manifest.json"))
+            const btn = UI.button(manifest.name, filesView, 'md-filled-button');
             const layout = UI.leftRightLayout(undefined, btn);
 
             btn.addEventListener('contextmenu', function (event) {
                 event.preventDefault();
                 const menu = UI.contextMenu(event);
-                UI.button('Delete', menu.menu, 'button', 'list-button');
+                const delbtn = UI.button('Delete', menu.menu, 'button', 'list-button');
+                delbtn.addEventListener('click', function () {
+                    const dialog = UI.create('div', document.body, 'dialog-box');
+                    UI.text('Uninstall ' + manifest.name, dialog, 'bold');
+                    UI.text(`This app and its data will be deleted.`, dialog).style.textDecoration = "underline";
+
+                    const buttonCont = UI.create('div', dialog, 'dialog-box-two-buttons');
+
+                    const cancel = UI.button('Cancel', buttonCont, 'md-outlined-button');
+                    cancel.addEventListener('click', function () {
+                        dialog.remove();
+                    });
+
+                    const select = UI.button('Uninstall', buttonCont, 'md-filled-button', 'flex-grow-1');
+                    select.addEventListener('click', async function () {
+                        dialog.innerHTML = "Removing...";
+                        await FS.rm(manifest.fsPath);
+                        dialog.remove();
+                    });
+                });
                 menu.finish();
             });
 
             btn.addEventListener('click', async function () {
                 if (file.kind === "directory") {
                     removeLauncher();
-                    const app = await WD.loadModule(file.path + "/index.js", true);
+                    const app = await WD.loadModule(manifest.fsPath + "/index.js", true);
                     const editor = await app.launch(FS, UI, WD);
                 }
             });

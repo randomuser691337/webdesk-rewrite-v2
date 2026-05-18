@@ -43,6 +43,7 @@ export async function launch(FS, UI, WD, path) {
                 input.remove();
             });
         });
+        
         const fileBtn = UI.button('New Text File', menu.menu, 'button', 'list-button');
         fileBtn.addEventListener('click', async function (event) {
             menu.closeMenu(document.body);
@@ -135,6 +136,7 @@ export async function launch(FS, UI, WD, path) {
                     select.addEventListener('click', async function () {
                         dialog.innerHTML = "Removing...";
                         await FS.rm(file.path);
+                        await nav(currentPath);
                         dialog.remove();
                     });
                 });

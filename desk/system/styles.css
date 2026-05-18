@@ -13,6 +13,7 @@
     --ui-surface-contents-no-color: 0, 0, 0;
     --text: #000;
     --ui-text: #fff;
+    --radii-first-layers: 15px;
     --radii-main: 12px;
     --radii-second: 9px;
     --radii-third: 6px;
@@ -101,7 +102,7 @@ p {
     flex-direction: column;
     min-width: 80px;
     min-height: 60px;
-    border-radius: var(--radii-main);
+    border-radius: var(--radii-first-layers);
     background-color: rgba(var(--ui-1), var(--ui-main-opacity));
     resize: both;
     overflow: auto;
@@ -172,6 +173,9 @@ textarea:focus {
     box-shadow: 0px 0px 15px 10px rgba(0, 0, 0, 0.05);
     border: 1px solid var(--ui-1-border-color);
     font-size: var(--small-fz) !important;
+    overflow: auto;
+    max-width: 75%;
+    max-height: 50%;
 }
 
 .context-menu * {
@@ -302,7 +306,7 @@ textarea:focus {
     background-color: rgba(var(--ui-2));
     box-shadow: 0px 0px 15px 10px rgba(0, 0, 0, 0.05);
     z-index: 999999999999;
-    width: 250px;
+    width: 270px;
     max-width: 85%;
 }
 
@@ -469,16 +473,10 @@ textarea:focus {
 .bar {
     width: 100%;
     box-sizing: border-box;
-    border-radius: var(--radii-second);
-    background-color: rgba(var(--ui-2));
-    padding: var(--padding-small);
+    border-radius: var(--radii-main);
+    background-color: rgba(var(--accent), 0.25);
+    padding: var(--padding-moderate);
     border: 1px solid rgba(var(--ui-1-border-color));
-}
-
-.bar-in-a-bar {
-    background-color: rgba(var(--accent), 0.2);
-    padding: var(--padding-small);
-    border-radius: var(--radii-second);
 }
 
 .brick-layout {

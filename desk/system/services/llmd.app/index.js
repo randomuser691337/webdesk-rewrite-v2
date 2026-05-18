@@ -23,18 +23,21 @@ export async function main(UI, ready, modelName) {
             } else {
                 const prog = (progress.progress * 100).toString();
                 const fetchedMatch = progress.text.match(/([\d.]+)MB fetched/);
-                let sizeString = "unknown size";
+                let sizeString = "";
+                let statusR = "Downloading";
 
                 if (fetchedMatch) {
                     const fetchedMB = parseFloat(fetchedMatch[1]);
                     const estimatedMB = estimateTotalSizeMB(fetchedMB, progress.progress);
                     if (estimatedMB) {
                         const estimatedGB = (estimatedMB / 1024).toFixed(2);
-                        sizeString = `${estimatedGB}GB`;
+                        sizeString = ` (Model is ${estimatedGB}GB)`;
+                    } else {
+                        statusR = "Starting";
                     }
                 }
 
-                text.innerHTML = `Downloading LLM... (${UI.truncater(prog, 2, false).replace('.', '')}%) (Model is ~${sizeString})`;
+                text.innerHTML = `${statusR} LLM... (${UI.truncater(prog, 2, false).replace('.', '')}%)${sizeString}`;
             }
         };
 

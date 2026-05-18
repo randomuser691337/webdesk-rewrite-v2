@@ -566,7 +566,7 @@ var UI = {
             document.removeEventListener("touchend", dragEnd);
         }
     },
-    contextMenu: function (event, exempt, closeCallback) {
+    contextMenu: function (event, exempt, closeCallback, forcePos) {
         // Used AI to debug
         /* contextMenu(event, exempt) documentation
             - contextMenu event parameter: Needs to include { event.clientX, event.clientY }
@@ -594,7 +594,7 @@ var UI = {
 
             calcX = x + rect.width + margin;
 
-            if (calcX <= window.innerWidth) {
+            if (calcX <= window.innerWidth && forcePos !== "right") {
                 console.log('<i> Horizontal space sufficient');
             } else {
                 console.log('<!> Horizontal space insufficient');
@@ -603,7 +603,7 @@ var UI = {
 
             const calcY = y + rect.height + margin
 
-            if (calcY <= window.innerHeight) {
+            if (calcY <= window.innerHeight && forcePos !== "left") {
                 console.log('<i> Vertical space sufficient');
             } else {
                 console.log('<!> Vertical space insufficient');

@@ -19,7 +19,6 @@
 .msg {
     font: var(--ui-text);
     padding: 9px;
-    border-radius: 18px;
     font-family: var(--font);
     font-size: var(--fz2);
     max-width: 70%;
@@ -34,14 +33,14 @@
 .mesent {
     align-self: flex-end;
     background-color: rgba(var(--accent), 1.0);
-    border-radius: 8px 8px 3px 8px;
+    border-radius: 8px 8px 4px 8px;
     color: var(--md-sys-color-inverse-primary);
 }
 
 .othersent {
     align-self: flex-start;
     background-color: rgba(var(--ui-1));
-    border-radius: 8px 8px 8px 3px;
+    border-radius: 8px 8px 8px 4px;
 }
 
 .msg-ui {

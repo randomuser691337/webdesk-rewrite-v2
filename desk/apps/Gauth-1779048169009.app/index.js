@@ -5,7 +5,6 @@ export async function launch(FS, UI, WD, path) {
 
     async function resize(blobUrl) {
         const bitmap = await createImageBitmap(await fetch(blobUrl).then(r => r.blob()));
-
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
 
@@ -32,12 +31,22 @@ export async function launch(FS, UI, WD, path) {
         const OCRData = await WD.OCR(fast);
         console.log(OCRData);
 
-        txt.innerText = "Step 2/2: Answering questions";
+        txt.innerText = "Step 2/2: Answering questions (Tokens per second: 0)";
         let llmResponse = "";
         let messages = [];
-        messages.push({ content: await FS.read('/apps/Gauth.app/answer.txt'), role: "system" });
+
+        let tps = 0;
+
+        const tpsCount = setInterval(function () {
+            txt.innerText = `Step 2/2: Answering questions (Tokens per second: ${tps})`;
+            tps = 0;
+        }, 1000);
+
+        messages.push({ content: await FS.read('/apps/Gauth-1779048169009.app/answer.txt'), role: "system" });
         const response2 = await WD.LLM.sendToLLM(messages, OCRData, function (token) {
+            tps++;
             llmResponse += token;
+            console.log(llmResponse);
         });
 
         const newPane = panes.results(response2);
@@ -105,8 +114,25 @@ export async function launch(FS, UI, WD, path) {
         results: function (text) {
             const div = UI.create('div');
             div.style.width = "480px";
+
+            function stripThink(text) {
+                if (!text || typeof text !== "string") return text;
+
+                const tag = "</think>";
+                const idx = text.toLowerCase().indexOf(tag);
+
+                if (idx === -1) return text;
+
+                return text.slice(idx + tag.length).trim();
+            }
+
             if (text !== "DATA_UNREADABLE") {
+
+                // strip reasoning block if present
+                text = stripThink(text);
+
                 UI.text('WebGauth processing finished', div);
+
                 const textArea = UI.create('div', div, 'bar');
                 textArea.innerHTML = text;
                 textArea.style = "overflow: auto !important; max-height: 500px; margin-bottom: var(--padding-small)";
@@ -129,8 +155,20 @@ export async function launch(FS, UI, WD, path) {
         }
     }
 
-    if (navigator.gpu) {
+    async function checkSupport() {
+        if (!navigator.gpu) {
+            return false;
+        }
 
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+            return false;
+        }
+
+        return true;
+    }
+
+    if (await checkSupport() === true) {
         const newPane = panes.loader();
         pane = newPane;
         window.main.content.appendChild(newPane);

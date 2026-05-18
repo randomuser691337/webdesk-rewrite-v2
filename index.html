@@ -77,6 +77,7 @@
                 top: 50%;
                 transform: translate(-50%, -50%);
                 max-width: 90%;
+                text-align: center;
             }
         </style>
         <script type="module">
@@ -90,6 +91,8 @@
         <div id="webdesk-loading">
             <div id="center">
                 <div class="line-wobble"></div>
+                <p style="font-size: 12px; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; display: none"
+                    id="webdesk-installing">Installing WebDesk...</p>
             </div>
         </div>
     </body>
@@ -108,10 +111,11 @@
 
         function panic(errorStackFromConsole) {
             document.body.innerHTML = `<div style="padding: 20px; color: #fff !important; background-color: #000">
-                <h2>WebDesk has crashed.</h
-                <p>Error details:</p>
+                <h2>WebDesk has crashed.</h2>
+                <p>Error details:</p>const wtf = document.getElementById('webdesk-installing');
+                    wtf.style.display = "inline-block";
                 ${errorStackFromConsole}
-                <p><button onclick="window.location.reload();">Reload</button></p>
+                <p><button onclick="window.location.reload();">Reload</button><button onclick="(async function () { await FS.rm('/system/version'); window.location.reload(); }());">Reinstall</button></p>
             </div>`;
         }
 
@@ -222,6 +226,13 @@
                     WFS.postMessage({ opID, op: "rm", path });
                 });
             },
+            parseConfig: function (path) {
+                return new Promise((resolve, reject) => {
+                    opID++;
+                    promises[opID] = { resolve, reject };
+                    WFS.postMessage({ opID, op: "parseConfig", path });
+                });
+            },
             mkdir: function (path) {
                 return new Promise((resolve, reject) => {
                     opID++;
@@ -259,13 +270,12 @@
             async ensureConfigLoaded() {
                 if (!sys.config) {
                     try {
-                        const raw = await FS.read(FS.normalizeUserPath('config/config.json'));
+                        const raw = await FS.parseConfig(FS.normalizeUserPath('config/config.json'));
                         if (!raw) {
                             sys.config = {};
                             return;
                         }
-                        sys.config = JSON.parse(raw);
-                        console.log(sys.config);
+                        sys.config = raw;
                     } catch (e) {
                         if (WD.debug === true) console.log(e);
                         sys.config = {};
@@ -363,6 +373,7 @@
         var sys = {
             userPath: "/home/user/",
             config: undefined,
+            booted: false,
             webid: {
 
             }
@@ -397,6 +408,7 @@
                         throw new Error("Error sending to LLM");
                     }
                 },
+                module: undefined
             },
             mobile: false,
             debug: true,
@@ -522,38 +534,35 @@
                 // BOOTLOADER CODE
                 // BOOTLOADER CODE
 
+                // Polyfill for environments without scheduler.yield
+                const yieldToMain = () =>
+                    typeof scheduler !== "undefined" && scheduler.yield
+                        ? scheduler.yield()
+                        : new Promise(resolve => setTimeout(resolve, 0));
+
+                // Rewritten by Claude to avoid blocking the main thread during installs
                 async function installWebDesk() {
                     try {
                         const res = await fetch("./desk.zip", { cache: "no-cache" });
                         blob = await res.blob();
                         const reader = new zip.ZipReader(new zip.BlobReader(blob));
-
                         const entries = await reader.getEntries();
-                        console.log(entries);
-                        if (entries.length) {
-                            let i = 0;
-                            async function iterate() {
-                                if (i !== entries.length) {
-                                    if (entries[i].directory === true) {
-                                        console.log('<i> skipping directory: ' + entries[i]);
-                                    } else {
-                                        let contents;
-                                        const blobit = checkFileTypes(entries[i].filename);
-                                        if (blobit === true) {
-                                            contents = await entries[i].getData(new zip.BlobWriter());
-                                            console.log(entries[i].filename, ` is a blob`);
-                                        } else {
-                                            contents = await entries[i].getData(new zip.TextWriter());
-                                        }
-                                        let type = "text";
-                                        if (blobit === true) type = "blob";
-                                        await FS.write("/" + entries[i].filename, contents, type);
-                                    }
-                                    i++
-                                    await iterate();
-                                }
+
+                        for (const entry of entries) {
+                            // Yield to main thread between every entry
+                            await yieldToMain();
+
+                            if (entry.directory) {
+                                console.log('<i> skipping directory: ' + entry.filename);
+                                continue;
                             }
-                            await iterate();
+
+                            const blobit = checkFileTypes(entry.filename);
+                            const contents = blobit
+                                ? await entry.getData(new zip.BlobWriter())
+                                : await entry.getData(new zip.TextWriter());
+
+                            await FS.write("/" + entry.filename, contents, blobit ? "blob" : "text");
                         }
 
                         await reader.close();
@@ -570,40 +579,13 @@
 
                 async function init() {
                     try {
-                        console.log('<i> Starting WebDesk...');
-                        await WD.loadScript('/system/ui.js', true);
-                        await WD.loadStyle('/system/styles.css', true);
-                        console.log(`<i> Initializing Material UI...`);
-                        await WD.loadScript('/system/mui.js', true);
-                        await UI.initialize();
-
-                        // variables
-                        await set.read('animsSlow').then(speed => {
-                            UI.animSpeed.slow = speed;
-                            UI.system.changeCSSVar('anim-speed-slow', `${speed}s`);
-                        });
-                        await set.read('animsMed').then(speed => {
-                            UI.animSpeed.med = speed;
-                            UI.system.changeCSSVar('anim-speed-med', `${speed}s`);
-                        });
-                        await set.read('animsFast').then(speed => {
-                            UI.animSpeed.fast = speed;
-                            UI.system.changeCSSVar('anim-speed-fast', `${speed}s`);
-                        });
-                        await set.read('font-family').then(font => {
-                            UI.system.changeCSSVar('md-ref-typeface-plain', font);
-                        });
-                        await set.read('mobile').then(mobile => {
-                            if (mobile === "true") WD.mobile = true;
-                        });
-
-                        const Launcher = await WD.loadModule('/system/apps/Launcher.app/index.js', true);
-                        const editor = await Launcher.launch(FS, UI, WD);
+                        console.log(`<i> Loading init.js`);
                         await WD.loadScript('/system/init.js', true);
-                        const onlined = await WD.loadModule('/system/services/onlined.app/index.js', true);
-                        await onlined.launch(FS, UI, WD, sys.webid);
-                        UI.systemElements.notifArea = UI.create('div', document.body, 'notif-pane');
-                        UI.anims.fadeOut(document.getElementById('webdesk-loading')).then(() => document.getElementById('webdesk-loading').remove());
+                        setTimeout(function () {
+                            if (sys.booted === false) {
+                                panic(`WebDesk failed to boot within 10 seconds. Reinstalling WebDesk should fix this.`);
+                            }
+                        }, 10000);
                     } catch (error) {
                         panic(error);
                     }
@@ -617,6 +599,8 @@
 
                 const ver = await FS.read('/system/version');
                 if (ver !== version || FORCEUPDATE === "true") {
+                    const wtf = document.getElementById('webdesk-installing');
+                    wtf.style.display = "inline-block";
                     console.log('WebDesk is out of date! Updating...');
                     installWebDesk();
                 } else {

@@ -52,6 +52,11 @@ export async function launch(FS, UI, WD) {
             const newPane = UI.create('div', undefined, 'button-list-normal');
             renderCrumb('Home', () => panes.Home());
             UI.text('Settings', newPane);
+            const userBar = UI.leftRightLayout('bar', newPane);
+            userBar.left.innerText = await set.read('name');
+            userBar.left.classList.add('bold');
+            const mgmtBtn = UI.button('Manage', userBar.right, 'button', 'small-button');
+
             const workerBtn = UI.button('General', newPane, 'md-filled-button', 'wide');
             workerBtn.addEventListener('click', async function () {
                 const genPane = await panes.General();
@@ -75,7 +80,7 @@ export async function launch(FS, UI, WD) {
             const transferEraseBtn = UI.button('Transfer or Erase WebDesk', newPane, 'md-filled-button', 'wide');
 
             const bar = UI.create('div', newPane, 'bar');
-            const barbox = UI.create('div', bar, 'flexbox bar-in-a-bar');
+            const barbox = UI.create('div', bar, 'flexbox bar');
             UI.text('Mobile UI', barbox, 'flexbox-left');
             const mobileSwitch = UI.create('md-switch', barbox, 'flexbox-right');
             mobileSwitch.addEventListener('change', function () {
@@ -85,7 +90,27 @@ export async function launch(FS, UI, WD) {
                     set.del('mobile');
                 }
             });
-            
+
+            const barai = UI.create('div', newPane, 'bar');
+            const barboxai = UI.create('div', barai, 'flexbox bar');
+            UI.text('LLM model', barboxai, 'flexbox-left');
+            const LLMSelectBtn = UI.button('Select', barboxai, 'md-filled-button', 'flexbox-right');
+            LLMSelectBtn.addEventListener('click', async function (e) {
+                const menu = UI.contextMenu(e);
+                await WD.startLLMService();
+                const LLMs = WD.LLM.module.listModels();
+                LLMs.forEach(async function (llm) {
+                    const btn = UI.button(llm, menu.menu, 'button', 'small-button wide');
+                    btn.addEventListener('click', async function () {
+                        menu.closeMenu(document.body);
+                        await set.write('LLMModel', llm);
+                        UI.snack('Set LLM model to ' + llm, 2500);
+                    });
+                });
+
+                menu.finish();
+            });
+
             UI.text(`Turning this on will enable the mobile UI`, bar, 'small-text');
 
             if (await set.read('mobile') === "true") {
@@ -99,7 +124,7 @@ export async function launch(FS, UI, WD) {
                 const eraseBtn = UI.button('Erase All Content and Settings', erasePane, 'md-filled-button', 'wide');
                 eraseBtn.addEventListener('click', async function () {
                     const div = UI.create('div', document.body);
-                    div.style = `position: fixed; left: 0px; right: 0px; top: 0px; bottom: 0px; z-index: 9999999; background-color: rgba(0, 0, 0, 0.2); backdrop-filter: blur(var(--blur-main)); -webkit-backdrop-filter: blur(var(--blur-main));`;
+                    div.style = `position: fixed; left: 0px; right: 0px; top: 0px; bottom: 0px; z-index: 2147483647; background-color: rgba(0, 0, 0, 0.2); backdrop-filter: blur(var(--blur-main)); -webkit-backdrop-filter: blur(var(--blur-main));`;
                     const dialog = UI.create('div', div, 'dialog-box');
                     const dialog1 = UI.create('div', dialog);
                     UI.text('Are you sure you want to erase all media, content and settings?', dialog1, 'bold');
@@ -115,7 +140,23 @@ export async function launch(FS, UI, WD) {
                         const dialog2 = UI.create('div', dialog);
                         UI.text('Erasing...', dialog2, 'bold');
                         await FS.erase('I understand all data in WFS will be destroyed');
-                        window.location.reload();
+                        div.style = `position: fixed; left: 0px; right: 0px; top: 0px; bottom: 0px; z-index: 2147483647; background-color: rgba(0, 0, 0, 1.0); backdrop-filter: blur(var(--blur-main)); -webkit-backdrop-filter: blur(var(--blur-main)); transition: background 0.2s`;
+                        const dialog3 = UI.create('div', dialog);
+                        UI.text('WebDesk has been erased', dialog3, 'bold');
+                        UI.text(`You can either reinstall WebDesk, or be redirected to about:blank to avoid reinstalling.`, dialog3);
+                        const buttonCont = UI.create('div', dialog3, 'dialog-box-two-buttons');
+                        const cancel = UI.button('Redirect', buttonCont, 'md-outlined-button');
+                        cancel.addEventListener('click', function () {
+                            window.location.href = "about:blank";
+                        });
+                        const select = UI.button('Reinstall', buttonCont, 'md-filled-button', 'flex-grow-1');
+                        select.addEventListener('click', async function () {
+                            window.location.reload();
+                        });
+
+                        UI.anims.crossFade(dialog2, dialog3).then(function () {
+                            dialog2.remove();
+                        });
                     });
                 });
             });
@@ -176,7 +217,7 @@ export async function launch(FS, UI, WD) {
             renderCrumb('Developer', () => panes.Developer());
             UI.text('Developer', newPane);
             const bar = UI.create('div', newPane, 'bar');
-            const barbox = UI.create('div', bar, 'flexbox bar-in-a-bar');
+            const barbox = UI.create('div', bar, 'flexbox bar');
             UI.text('Force update', barbox, 'flexbox-left');
             const forceSwitch = UI.create('md-switch', barbox, 'flexbox-right');
             forceSwitch.addEventListener('change', function () {
