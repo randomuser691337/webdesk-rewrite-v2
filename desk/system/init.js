@@ -164,7 +164,7 @@
                 readyResolve = resolve;
             });
             let modelName = await set.read('LLMModel');
-            if (!modelName) modelName = "Qwen2.5-0.5B-Instruct-q0f32-MLC";
+            if (!modelName) modelName = "Qwen3-0.6B-q4f32_1-MLC";
             await WD.LLM.module.main(UI, readyResolve, modelName);
             ready.then(() => {
                 WD.LLM.loaded = true;
