@@ -43,7 +43,7 @@ export async function launch(FS, UI, WD, path) {
                 input.remove();
             });
         });
-        
+
         const fileBtn = UI.button('New Text File', menu.menu, 'button', 'list-button');
         fileBtn.addEventListener('click', async function (event) {
             menu.closeMenu(document.body);
@@ -102,22 +102,8 @@ export async function launch(FS, UI, WD, path) {
         if (!currentPath.endsWith('/')) currentPath = currentPath + "/";
 
         Object.values(fileList).forEach(function (file) {
-            const btn = UI.button('', filesView, 'button', 'list-button');
-            console.log(btn);
-            const layout = UI.leftRightLayout(undefined, btn);
 
-            if (file.kind === "directory") {
-                UI.icon('folder', layout.left, 'symbol-style-files');
-            } else {
-                UI.icon('draft', layout.left, 'symbol-style-files');
-            }
-
-            const filetxt = UI.span(file.name, layout.left);
-            filetxt.style.marginLeft = "var(--padding-small)";
-            layout.right.innerText = "⋮";
-
-            btn.addEventListener('contextmenu', function (event) {
-                event.preventDefault();
+            function contextm(event) {
                 const menu = UI.contextMenu(event);
                 const delBtn = UI.button('Delete', menu.menu, 'button', 'list-button');
                 delBtn.addEventListener('click', function (event) {
@@ -141,6 +127,30 @@ export async function launch(FS, UI, WD, path) {
                     });
                 });
                 menu.finish();
+            }
+
+            const btn = UI.button('', filesView, 'button', 'list-button');
+            console.log(btn);
+            const layout = UI.leftRightLayout(undefined, btn);
+
+            if (file.kind === "directory") {
+                UI.icon('folder', layout.left, 'symbol-style-files');
+            } else {
+                UI.icon('draft', layout.left, 'symbol-style-files');
+            }
+
+            const filetxt = UI.span(file.name, layout.left);
+            filetxt.style.marginLeft = "var(--padding-small)";
+            layout.right.innerText = "⋮";
+            layout.right.style.paddingLeft = "30px";
+            layout.right.addEventListener('click', function (event) {
+                event.preventDefault();
+                contextm(event);
+            });
+
+            btn.addEventListener('contextmenu', function (event) {
+                event.preventDefault();
+                contextm(event);
             });
 
             btn.addEventListener(dblClick, async function () {

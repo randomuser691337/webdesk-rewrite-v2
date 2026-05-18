@@ -29,7 +29,6 @@ export async function launch(FS, UI, WD, path) {
         const imgURL = await URL.createObjectURL(blob);
         const fast = await resize(imgURL);
         const OCRData = await WD.OCR(fast);
-        console.log(OCRData);
 
         txt.innerText = "Step 2/2: Answering questions (Tokens per second: 0)";
         let llmResponse = "";
@@ -46,8 +45,9 @@ export async function launch(FS, UI, WD, path) {
         const response2 = await WD.LLM.sendToLLM(messages, OCRData, function (token) {
             tps++;
             llmResponse += token;
-            console.log(llmResponse);
         });
+
+        clearInterval(tpsCount);
 
         const newPane = panes.results(response2);
         window.main.content.appendChild(newPane);
@@ -63,7 +63,7 @@ export async function launch(FS, UI, WD, path) {
             div.style.width = "320px";
             UI.text('WebGauth is loading the AI. Look at the top right for status updates.', div);
             const special = UI.text('', div);
-            special.innerHTML = "<b>Tips:</b> Close all the tabs you can. AI is resource-intensive, and low-end laptops can't handle it well."
+            special.innerHTML = "<b>Tips:</b> Close all the tabs you can. AI is resource-intensive, and low-end laptops can't handle it well.";
             return div;
         },
         home: function () {

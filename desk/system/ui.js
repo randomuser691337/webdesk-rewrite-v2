@@ -27,7 +27,16 @@ var UI = {
     },
     systemElements: {
         rect: {
-
+            shelf: {
+                "x": 0,
+                "y": 788.6062622070312,
+                "width": 1060.2000732421875,
+                "height": 52.593753814697266,
+                "top": 788.6062622070312,
+                "right": 1060.2000732421875,
+                "bottom": 841.2000160217285,
+                "left": 0
+            }
         },
         taskbarAppButtonList: undefined,
         notifArea: undefined,

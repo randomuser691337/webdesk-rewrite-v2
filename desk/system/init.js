@@ -26,11 +26,19 @@
         if (mobile === "true") WD.mobile = true;
     });
 
-    const Launcher = await WD.loadModule('/system/apps/Launcher-1779048383039.app/index.js', true);
-    const editor = await Launcher.launch(FS, UI, WD).then(function () {
-        UI.anims.fadeOut(document.getElementById('webdesk-loading')).then(() => document.getElementById('webdesk-loading').remove());
-        sys.booted = true;
-    });
+    if (await set.read('setupdone') !== "true") {
+        const Launcher = await WD.loadModule('/system/apps/Setup-1779048342209.app/index.js', true);
+        const editor = await Launcher.launch(FS, UI, WD).then(function () {
+            UI.anims.fadeOut(document.getElementById('webdesk-loading')).then(() => document.getElementById('webdesk-loading').remove());
+            sys.booted = true;
+        });
+    } else {
+        const Launcher = await WD.loadModule('/system/apps/Launcher-1779048383039.app/index.js', true);
+        const editor = await Launcher.launch(FS, UI, WD).then(function () {
+            UI.anims.fadeOut(document.getElementById('webdesk-loading')).then(() => document.getElementById('webdesk-loading').remove());
+            sys.booted = true;
+        });
+    }
 
     async function startsockets() {
         const devsocket = await set.read('devsocket');

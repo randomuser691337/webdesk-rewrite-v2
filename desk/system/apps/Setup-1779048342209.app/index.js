@@ -31,10 +31,16 @@ export async function launch(FS, UI, WD) {
     max-height: 95% !important;
 }`
     const div = UI.create('div', backgroundDiv, 'setup-window');
-    const close = UI.button('close', div, 'md-outlined-button');
-    close.addEventListener('click', function () {
-        backgroundDiv.remove();
-    })
+    const close = UI.button('Skip for now', div, 'md-outlined-button', 'wide');
+    close.addEventListener('click', async function () {
+        const Launcher = await WD.loadModule('/system/apps/Launcher-1779048383039.app/index.js', true);
+        const editor = await Launcher.launch(FS, UI, WD).then(function () {
+            UI.anims.fadeOut(backgroundDiv).then(function () {
+                backgroundDiv.remove();
+            });
+        });
+    });
+
     const container = UI.create('div', div, 'window-content');
     var pane;
     const panes = {
@@ -123,6 +129,7 @@ export async function launch(FS, UI, WD) {
             return newPane;
         },
         setupDone: async function () {
+            await set.write('setupdone', 'true');
             const newPane = UI.create('div');
 
             await UI.img('/system/img/setup/check.svg', newPane, 'header-image');
