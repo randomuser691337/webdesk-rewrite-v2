@@ -3,6 +3,9 @@ async function regSetup() {
     if (!await set.read('WDDefaultEditor')) {
         await set.write('WDDefaultEditor', '/apps/TextEdit-1779048336412.app/index.js');
     }
+    if (!await set.read('WDDefaultMedia')) {
+        await set.write('WDDefaultMedia', '/apps/Preview-1779048220692.app/index.js');
+    }
     if (!await set.read('EditorTextSize')) {
         await set.write('EditorTextSize', '14px');
     }

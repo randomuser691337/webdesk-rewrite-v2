@@ -53,6 +53,11 @@ export async function launch(FS, UI, WD, path) {
     };
 }
 
+export async function open(FS, UI, WD, path) {
+    const view = await launch(FS, UI, WD, path);
+    view.open(path, false, path)
+}
+
 export async function close() {
 
 }

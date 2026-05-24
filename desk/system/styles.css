@@ -75,10 +75,16 @@ md-elevated-button {
     --md-elevated-button-container-shape: var(--radii-main);
 }
 
+html,
+body {
+    touch-action: manipulation;
+    overscroll-behavior: none;
+}
+
 body {
     color: var(--text);
     font-size: var(--font-size-text);
-    background-color: var(--md-sys-color-surface-variant);
+    background-color: rgba(var(--ui-1));
     font-family: var(--font);
     background-size: cover;
     background-position: center;
@@ -91,6 +97,7 @@ body {
 
 button,
 p {
+    -webkit-tap-highlight-color: transparent;
     font-family: var(--font);
     font-size: var(--main-fz);
     color: var(--text);

@@ -203,7 +203,7 @@ export async function launch(FS, UI, WD) {
                 const messageView = UI.create('div', pane, 'message-container');
                 const messagesUI = UI.create('div', pane, 'dialog-box-two-buttons msg-ui');
 
-                const input = UI.input('WebDesk Messages - ' + contact.username, messagesUI, 'flex-grow-1 msg-ui');
+                const input = UI.input('WebDesk Messages - ' + contact.username, messagesUI, 'flex-grow-1 msg-ui wide');
                 const send = UI.button('Send', messagesUI, 'md-filled-button');
 
                 async function setupRightClick(newMsg, msg) {
@@ -295,36 +295,38 @@ export async function launch(FS, UI, WD) {
                         });
                     }
 
-                    const loadMore = UI.button('Load more', undefined, 'button', 'small-button');
-                    messageView.prepend(loadMore);
-                    loadMore.addEventListener('click', async function () {
-                        const oldHeight = messageView.scrollHeight;
-                        const older = await msgDB.loadMsgs(contact.username, pastIndex - 1);
+                    if (fetchedDB.indexCount > 0) {
+                        const loadMore = UI.button('Load more', undefined, 'button', 'small-button');
+                        messageView.prepend(loadMore);
+                        loadMore.addEventListener('click', async function () {
+                            const oldHeight = messageView.scrollHeight;
+                            const older = await msgDB.loadMsgs(contact.username, pastIndex - 1);
 
-                        if (!older || older.length === 0) {
-                            loadMore.innerText = "No more messages";
-                            loadMore.disabled = true;
-                            return;
-                        }
-
-                        older.reverse().forEach(function (msg) {
-                            const newMsg = UI.create('div', undefined, 'msg');
-                            if (msg.sender === false) {
-                                newMsg.classList.add('othersent');
-                            } else {
-                                newMsg.classList.add('mesent');
+                            if (!older || older.length === 0) {
+                                loadMore.innerText = "No more messages";
+                                loadMore.disabled = true;
+                                return;
                             }
 
-                            setupRightClick(newMsg, msg);
+                            older.reverse().forEach(function (msg) {
+                                const newMsg = UI.create('div', undefined, 'msg');
+                                if (msg.sender === false) {
+                                    newMsg.classList.add('othersent');
+                                } else {
+                                    newMsg.classList.add('mesent');
+                                }
 
-                            newMsg.innerText = msg.content;
-                            messageView.insertBefore(newMsg, loadMore.nextSibling);
+                                setupRightClick(newMsg, msg);
+
+                                newMsg.innerText = msg.content;
+                                messageView.insertBefore(newMsg, loadMore.nextSibling);
+                            });
+
+                            const newHeight = messageView.scrollHeight;
+                            messageView.scrollTop += (newHeight - oldHeight);
+                            pastIndex--;
                         });
-
-                        const newHeight = messageView.scrollHeight;
-                        messageView.scrollTop += (newHeight - oldHeight);
-                        pastIndex--;
-                    });
+                    }
 
                 }
                 WD.onlined.messages.registerNewWin(contact.username, win, controller);

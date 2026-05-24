@@ -32,15 +32,15 @@ export async function launch(FS, UI, WD, path) {
 
 export async function deskide(FS, UI, WD, path) {
     const window = UI.window('DeskIDE');
+    let editorFontSize = "12px";
     window.main.content.style = "display: flex; padding: 0px;";
     const sidebar = UI.create('div', window.main.content, 'window-split-sidebar');
-    sidebar.style.width = UI.math.calcRes(15, 15).w + "px";
 
     const editorArea = UI.create('div', window.main.content, 'window-split-content');
     editorArea.style.cssText = "padding: 0px; display: flex; flex-direction: column; overflow: hidden; flex: 1;";
 
     const tabBar = UI.create('div', editorArea);
-    tabBar.style.cssText = "display: flex; flex-direction: row; overflow-x: auto; overflow-y: hidden; flex-shrink: 0; background: rgba(var(--surface), 1.0); border-bottom: 1px solid rgba(var(--outline), 0.3); scrollbar-width: none;";
+    tabBar.style.cssText = "display: flex; flex-direction: row; overflow-x: auto; overflow-y: hidden; flex-shrink: 0; background: rgba(var(--ui-1), 1.0); border-bottom: 1px solid rgba(var(--outline), 0.3); scrollbar-width: none;";
 
     const editorContainer = UI.create('div', editorArea);
     editorContainer.style.cssText = "flex: 1; overflow: hidden; position: relative;";
@@ -51,6 +51,11 @@ export async function deskide(FS, UI, WD, path) {
         const calc = UI.math.calcRes(80, 80);
         window.main.window.style.height = calc.h + "px";
         window.main.window.style.width = calc.w + "px";
+        sidebar.style.width = UI.math.calcRes(15, 15).w + "px";
+    } else {
+        sidebar.style = "max-width: 100%; width: 100%";
+        sidebar.style.height = UI.math.calcRes(15, 15).h + "px";
+        window.main.content.style.flexDirection = "column";
     }
     window.main.content.style.overflow = "hidden";
     window.finish();
@@ -100,7 +105,7 @@ export async function deskide(FS, UI, WD, path) {
     }
 
     function returnBtnStyles() {
-        return "font-family: 'font'; background: transparent; font-size: var(--small-fz); border: none; display: block; box-sizing: border-box; text-align: left; cursor: pointer;";
+        return "font-family: var(--font); background: transparent; font-size: var(--small-fz); border: none; display: block; box-sizing: border-box; text-align: left; cursor: pointer;";
     }
 
     async function buildFSNode(path, el) {
@@ -196,7 +201,7 @@ export async function deskide(FS, UI, WD, path) {
         const fileName = filePath ? filePath.replace(/\/+$/, '').split('/').pop() : 'untitled';
 
         const tabEl = UI.create('div', tabBar);
-        tabEl.style.cssText = "display: flex; align-items: center; padding: 0 8px 0 12px; height: 32px; white-space: nowrap; cursor: pointer; flex-shrink: 0; font-size: var(--small-fz); font-family: 'font'; border-bottom: 2px solid transparent; transition: background 0.1s; gap: 6px;";
+        tabEl.style.cssText = "display: flex; align-items: center; padding: 0 8px 0 12px; height: 32px; white-space: nowrap; cursor: pointer; flex-shrink: 0; font-size: var(--small-fz); font-family: var(--font); border-bottom: 2px solid transparent; transition: background 0.1s; gap: 6px;";
 
         const tabLabel = UI.create('span', tabEl);
         tabLabel.textContent = fileName;
@@ -258,44 +263,9 @@ export async function deskide(FS, UI, WD, path) {
     let currentPathRef = null;
 
     function setupEditorMenuBar(filePath, editor) {
-        currentEditorRef = editor;
-        currentPathRef = filePath;
-
-        if (menuBarInitialized) return;
-        menuBarInitialized = true;
-
         window.titlebar.text.innerHTML = "";
         const buttonContainer = UI.container(undefined, window.titlebar.text, 'column-button-container full-width');
-        var menuOpen = false;
-        var menuCloseFunction = false;
-        var menuName = undefined;
-
-        function closeMenu() {
-            menuCloseFunction(document.body);
-        }
-
-        function handleToolBtn(name, func) {
-            if (menuOpen === true) {
-                if (menuName === name) {
-                    closeMenu();
-                } else {
-                    closeMenu();
-                    func();
-                }
-            } else {
-                func();
-            }
-        }
-
-        function handleHoverToolBtn(name, func) {
-            if (menuOpen === true) {
-                if (menuName === name) {
-                } else {
-                    closeMenu();
-                    func();
-                }
-            }
-        }
+        const newToolbar = UI.toolbar.createToolbar(buttonContainer);
 
         var editorActions = {
             undo: function () {
@@ -314,24 +284,18 @@ export async function deskide(FS, UI, WD, path) {
 
         var menu = {
             file: function () {
-                if (menuOpen === true) closeMenu();
-                menuName = "File";
-                const rect = fileButton.getBoundingClientRect();
-                const event = { clientX: rect.x, clientY: rect.y + rect.height + 5 };
-                const ctx = UI.contextMenu(event, [fileButton], function () { menuOpen = false; });
+                const ctx = newToolbar.toolbarMenu(fileButton, newToolbar);
 
-                const newWindow = UI.button('New Window', ctx.menu, 'button', 'list-button');
-                newWindow.addEventListener('mouseup', async function () {
-                    closeMenu();
+                newToolbar.listButton('New Window', ctx.menu, async function () {
+                    newToolbar.menuCloseFunction();
                     let thing = await WD.loadModule('/apps/DeskIDE-1779047593382.app/index.js', true);
                     await thing.launch(FS, UI, WD);
                 });
 
                 UI.divider(ctx.menu);
 
-                const filebtn = UI.button('Open File...', ctx.menu, 'button', 'list-button');
-                filebtn.addEventListener('mouseup', async function () {
-                    closeMenu();
+                newToolbar.listButton('Open File...', ctx.menu, async function () {
+                    newToolbar.menuCloseFunction();
                     const mod = await WD.loadModule('/apps/Files-1779048116446.app/index.js', true);
                     const filePicker = await mod.pickFile(FS, UI, WD, { name: "DeskIDE" });
                     if (filePicker !== false) {
@@ -339,133 +303,101 @@ export async function deskide(FS, UI, WD, path) {
                     }
                 });
 
-                const fileTextEditbtn = UI.button('Open File in TextEdit...', ctx.menu, 'button', 'list-button');
-                fileTextEditbtn.addEventListener('mouseup', async function () {
-                    closeMenu();
+                newToolbar.listButton('Open File in TextEdit...', ctx.menu, async function () {
+                    newToolbar.menuCloseFunction();
                     let thing = await WD.loadModule('/apps/TextEdit-1779048336412.app/index.js', true);
                     await thing.launch(FS, UI, WD);
                 });
 
                 UI.divider(ctx.menu);
 
-                const button = UI.button('Save', ctx.menu, 'button', 'list-button');
-                button.addEventListener('mouseup', async function () {
-                    closeMenu();
+                newToolbar.listButton('Save', ctx.menu, async function () {
+                    newToolbar.menuCloseFunction();
                     await editorActions.save();
                 });
 
-                const saver = UI.button('Save & restart', ctx.menu, 'button', 'list-button');
-                saver.addEventListener('mouseup', async function () {
+                newToolbar.listButton('Save & restart', ctx.menu, async function () {
                     await editorActions.save();
                     await window.location.reload();
                 });
 
-                menuOpen = true;
-                menuCloseFunction = ctx.closeMenu;
+                newToolbar.menuOpen = true;
+                newToolbar.menuCloseFunction = ctx.closeMenu;
                 ctx.finish();
             },
             edit: function () {
-                if (menuOpen === true) closeMenu();
-                menuName = "Edit";
-                const rect = editButton.getBoundingClientRect();
-                const event = { clientX: rect.x, clientY: rect.y + rect.height + 5 };
-                const ctx = UI.contextMenu(event, [editButton], function () { menuOpen = false; });
+                const ctx = newToolbar.toolbarMenu(editButton, newToolbar);
 
-                const findbtn = UI.button('Find', ctx.menu, 'button', 'list-button');
-                findbtn.addEventListener('mouseup', async function () {
+                newToolbar.listButton('Find', ctx.menu, async function () {
                     currentEditorRef.execCommand('find');
-                    closeMenu();
+                    newToolbar.menuCloseFunction();
                 });
 
-                const replacebtn = UI.button('Replace', ctx.menu, 'button', 'list-button');
-                replacebtn.addEventListener('mouseup', async function () {
+                newToolbar.listButton('Replace', ctx.menu, async function () {
                     currentEditorRef.execCommand('replace');
-                    closeMenu();
+                    newToolbar.menuCloseFunction();
                 });
 
                 UI.divider(ctx.menu);
 
-                const undobtn = UI.button('Undo', ctx.menu, 'button', 'list-button');
-                undobtn.addEventListener('mouseup', async function () {
+                newToolbar.listButton('Undo', ctx.menu, async function () {
                     editorActions.undo();
-                    closeMenu();
+                    newToolbar.menuCloseFunction();
                 });
 
-                const redobtn = UI.button('Redo', ctx.menu, 'button', 'list-button');
-                redobtn.addEventListener('mouseup', async function () {
+                newToolbar.listButton('Redo', ctx.menu, async function () {
                     editorActions.redo();
-                    closeMenu();
+                    newToolbar.menuCloseFunction();
                 });
 
-                menuOpen = true;
-                menuCloseFunction = ctx.closeMenu;
+                newToolbar.menuOpen = true;
+                newToolbar.menuCloseFunction = ctx.closeMenu;
                 ctx.finish();
             },
             selection: function () {
-                if (menuOpen === true) closeMenu();
-                menuName = "Selection";
-                const rect = selectionButton.getBoundingClientRect();
-                const event = { clientX: rect.x, clientY: rect.y + rect.height + 5 };
-                const ctx = UI.contextMenu(event, [selectionButton], function () { menuOpen = false; });
+                const ctx = newToolbar.toolbarMenu(selectionButton, newToolbar);
 
-                const sabtn = UI.button('Select All', ctx.menu, 'button', 'list-button');
-                sabtn.addEventListener('mouseup', async function () {
+                newToolbar.listButton('Select All', ctx.menu, async function () {
                     currentEditorRef.selectAll();
-                    closeMenu();
+                    newToolbar.menuCloseFunction();
                 });
 
-                menuOpen = true;
-                menuCloseFunction = ctx.closeMenu;
+                newToolbar.menuOpen = true;
+                newToolbar.menuCloseFunction = ctx.closeMenu;
                 ctx.finish();
             },
             tools: function () {
-                if (menuOpen === true) closeMenu();
-                menuName = "Tools";
-                const rect = toolsButton.getBoundingClientRect();
-                const event = { clientX: rect.x, clientY: rect.y + rect.height + 5 };
-                const ctx = UI.contextMenu(event, [toolsButton], function () { menuOpen = false; });
+                const ctx = newToolbar.toolbarMenu(toolsButton, newToolbar);
 
-                const restartDeskIDE = UI.button('Restart DeskIDE', ctx.menu, 'button', 'list-button');
-                restartDeskIDE.addEventListener('mouseup', async function () {
-                    closeMenu();
+                newToolbar.listButton('Restart DeskIDE', ctx.menu, async function () {
+                    newToolbar.menuCloseFunction();
                     window.main.window.remove();
                     let thing = await WD.loadModule('/apps/DeskIDE-1779047593382.app/index.js', true);
                     await thing.launch(FS, UI, WD);
                 });
 
-                const LiveCSSbtn = UI.button('LiveCSS', ctx.menu, 'button', 'list-button');
-                LiveCSSbtn.addEventListener('mouseup', async function () {
-                    closeMenu();
+                newToolbar.listButton('LiveCSS', ctx.menu, async function () {
+                    newToolbar.menuCloseFunction();
                     let thing = await WD.loadModule('/apps/DeskIDE-1779047593382.app/tools/LiveCSS.app/index.js', true);
                     await thing.launch(FS, UI, WD);
                 });
 
-                menuOpen = true;
-                menuCloseFunction = ctx.closeMenu;
+                newToolbar.menuOpen = true;
+                newToolbar.menuCloseFunction = ctx.closeMenu;
                 ctx.finish();
             }
         };
 
-        function setupmousedown(button, name, func) {
-            button.addEventListener('mousedown', async function () {
-                handleToolBtn(name, func);
-            });
-            button.addEventListener('mouseover', function () {
-                handleHoverToolBtn(name, func);
-            });
-        }
+        currentEditorRef = editor;
+        currentPathRef = filePath;
 
-        const fileButton = UI.button('File', buttonContainer, 'button', 'titlebar-button');
-        setupmousedown(fileButton, 'File', menu.file);
+        if (menuBarInitialized) return;
+        menuBarInitialized = true;
 
-        const editButton = UI.button('Edit', buttonContainer, 'button', 'titlebar-button');
-        setupmousedown(editButton, 'Edit', menu.edit);
-
-        const selectionButton = UI.button('Selection', buttonContainer, 'button', 'titlebar-button');
-        setupmousedown(selectionButton, 'Selection', menu.selection);
-
-        const toolsButton = UI.button('Tools', buttonContainer, 'button', 'titlebar-button');
-        setupmousedown(toolsButton, 'Tools', menu.tools);
+        const fileButton = newToolbar.toolbarButton('File', menu.file);
+        const editButton = newToolbar.toolbarButton('Edit', menu.edit);
+        const selectionButton = newToolbar.toolbarButton('Selection', menu.selection);
+        const toolsButton = newToolbar.toolbarButton('Tools', menu.tools);
     }
 
     if (typeof path === "string") {

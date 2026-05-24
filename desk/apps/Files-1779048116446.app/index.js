@@ -2,11 +2,12 @@ export async function launch(FS, UI, WD, path) {
     const win = UI.window('Files');
     var dblClick = "dblclick";
     if (WD.mobile === false) {
-        win.main.window.style.height = "300px";
-        win.main.window.style.width = "300px";
+        win.main.window.style.height = "350px";
+        win.main.window.style.width = "350px";
     } else {
         dblClick = "click";
     }
+
     const filesView = UI.create('div', win.main.content);
     filesView.style.padding = "0px";
     var currentPath = "";
@@ -67,6 +68,7 @@ export async function launch(FS, UI, WD, path) {
         });
         menu.finish();
     });
+
     async function nav(path) {
         const fileList = await FS.ls(path);
         filesView.innerHTML = "";
@@ -186,8 +188,8 @@ export async function pickFile(FS, UI, WD, parameters) {
         const win = UI.window('File Picker - ' + parameters.name);
         var dblClick = "dblclick";
         if (WD.mobile === false) {
-            win.main.window.style.height = "300px";
-            win.main.window.style.width = "300px";
+            win.main.window.style.height = "350px";
+            win.main.window.style.width = "350px";
         } else {
             dblClick = "click";
         }

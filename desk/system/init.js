@@ -23,7 +23,9 @@
         UI.system.changeCSSVar('md-ref-typeface-plain', font);
     });
     await set.read('mobile').then(mobile => {
-        if (mobile === "true") WD.mobile = true;
+        if (mobile === "true") {
+            WD.mobile = true; UI.system.changeCSSVar('ui-main-opacity', '1.0');
+        }
     });
 
     if (await set.read('setupdone') !== "true") {
@@ -76,14 +78,6 @@
                     WD.socket = undefined;
                     resolve(false);
                     sys.webid.priv = -1;
-                });
-
-                WD.socket.on("servmsg", (data) => {
-                    UI.snack(data);
-                });
-
-                WD.socket.on("umsg", (data) => {
-                    UI.snack(data);
                 });
 
                 WD.socket.on("error", (data) => {

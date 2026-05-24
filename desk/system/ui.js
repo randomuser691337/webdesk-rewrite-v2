@@ -61,6 +61,9 @@ var UI = {
 
                 observer.observe(parentElement, { childList: true });
             })
+        },
+        mouseDown: function (element) {
+
         }
     },
     math: {
@@ -93,6 +96,7 @@ var UI = {
             });
         }
     },
+
     getDate: function (type) {
         const now = new Date();
         if (type === "military") {
@@ -160,28 +164,39 @@ var UI = {
         });
     },
     initialize: async function () {
-        const img = await FS.read(FS.normalizeUserPath('config/wallpaper'));
-        console.log(`<i> Creating object URL from blob`);
-        const objectUrl = await URL.createObjectURL(img);
-        console.log(`<i> Trying to display image`);
-        if (document.getElementById('wallimg-webdesk-desktop')) {
-            document.getElementById('wallimg-webdesk-desktop').remove();
-        }
-        const wallimg = UI.create('img', document.body);
-        wallimg.id = "wallimg-webdesk-desktop";
-        wallimg.style = `position: fixed;
+        if (await set.read('showWall') !== "false") {
+            const img = await FS.read(FS.normalizeUserPath('config/wallpaper'));
+            console.log(`<i> Creating object URL from blob`);
+            const objectUrl = await URL.createObjectURL(img);
+            console.log(`<i> Trying to display image`);
+            if (document.getElementById('wallimg-webdesk-desktop')) {
+                document.getElementById('wallimg-webdesk-desktop').remove();
+            }
+            const wallimg = UI.create('img', document.body);
+            wallimg.id = "wallimg-webdesk-desktop";
+            wallimg.style = `position: fixed;
   width: 100%;
   height: 100%;
   z-index: -4;
   object-fit: cover;
   object-position: center;`
-        wallimg.src = objectUrl;
-        wallimg.onload = () => {
-            const fac = new FastAverageColor();
-            const color = fac.getColor(wallimg);
-            console.log(color);
+            wallimg.src = objectUrl;
+            wallimg.onload = () => {
+                const fac = new FastAverageColor();
+                const color = fac.getColor(wallimg);
+                initUI(color);
+            }
+        } else {
+            if (document.getElementById('wallimg-webdesk-desktop')) {
+                document.getElementById('wallimg-webdesk-desktop').remove();
+            }
+            const color = { hex: "noWall" }
+            initUI(color);
+        }
+
+        async function initUI(color) {
             document.adoptedStyleSheets.push(MaterialUI.typescaleStyles.styleSheet);
-            set.write('material-hex', color.hex);
+            await set.write('material-hex', color.hex);
             UI.system.applyTheme(color.hex, color.hex, color.isDark);
         }
     },
@@ -263,9 +278,91 @@ var UI = {
             const TextEditor = await WD.loadModule(`${editorApp}`, true);
             if (WD.debug === true) console.log(TextEditor);
             TextEditor.editor(path);
-        } else {
-
+        } else if (type === "blob") {
+            const editorApp = await set.read('WDDefaultMedia');
+            if (WD.debug === true) console.log(editorApp);
+            const Viewer = await WD.loadModule(`${editorApp}`, true);
+            if (WD.debug === true) console.log(Viewer);
+            Viewer.open(FS, UI, WD, path);
         }
+    },
+    toolbar: {
+        createToolbar: function (parent) {
+            const bar = { toolbar: parent, menuCloseFunction: undefined, menuOpen: false, menuName: false };
+            bar.handleHoverToolBtn = function (name, func) {
+                if (bar.menuOpen === true) {
+                    if (bar.menuName === name) {
+                    } else {
+                        bar.menuCloseFunction(document.body);
+                        func();
+                    }
+                }
+            }
+            bar.handleToolBtn = function (name, func) {
+                if (bar.menuOpen === true) {
+                    if (bar.menuName === name) {
+                        bar.menuCloseFunction(document.body);
+                    } else {
+                        bar.menuCloseFunction(document.body);
+                        func();
+                    }
+                } else {
+                    func();
+                }
+            }
+            bar.setupMouseDown = function (button, name, func) {
+                button.addEventListener('mousedown', async function () {
+                    bar.handleToolBtn(name, func);
+                });
+                button.addEventListener('mouseover', function () {
+                    bar.handleHoverToolBtn(name, func);
+                });
+                button.addEventListener('touchstart', async function (e) {
+                    e.preventDefault();
+                    bar.handleToolBtn(name, func);
+                    function onTouchEnd(ev) {
+                        document.removeEventListener('touchend', onTouchEnd);
+                        const touch = ev.changedTouches[0];
+                        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                        if (el && !button.contains(el)) {
+                            el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+                            el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                        }
+                    }
+                    document.addEventListener('touchend', onTouchEnd, { once: true });
+                }, { passive: false });
+            }
+            bar.toolbarButton = function (name, func) {
+                const btn = UI.button(name, bar.toolbar, 'button', 'titlebar-button');
+                bar.setupMouseDown(btn, name, func);
+                return btn;
+            }
+            bar.listButton = function (name, container, func, classList) {
+                const btn = UI.button(name, container, 'button', 'list-button');
+
+                btn.addEventListener('mouseup', function (e) {
+                    bar.menuCloseFunction(document.body);
+                    func();
+                });
+                btn.addEventListener('click', function (e) {
+                    bar.menuCloseFunction(document.body);
+                    func();
+                });
+
+                return btn;
+            }
+            bar.toolbarMenu = function (button, toolbar) {
+                if (bar.menuOpen === true) bar.menuCloseFunction();
+                bar.menuName = button.innerText;
+                console.log(bar.menuName);
+                const rect = button.getBoundingClientRect();
+                const event = { clientX: rect.x, clientY: rect.y + rect.height + 5 };
+                const ctx = UI.contextMenu(event, [button], function () { bar.menuOpen = false; });
+                return ctx;
+            }
+
+            return bar;
+        },
     },
     list: {
         create: function (classList, parent) {
@@ -399,7 +496,8 @@ var UI = {
         var shelfButton;
 
         function generateShelfButton() {
-            const btn = UI.button(title, UI.systemElements.taskbarAppButtonList, 'md-filled-button');
+            const shelfBtnName = WD.mobile ? UI.truncater(title, 8) : title;
+            const btn = UI.button(shelfBtnName, UI.systemElements.taskbarAppButtonList, 'md-filled-button');
             btn.addEventListener('click', function () {
                 if (minimized === true) {
                     restore();
@@ -621,20 +719,24 @@ var UI = {
         }
 
         function closeMenu(e) {
-            if (!el.contains(e.target)) {
-                if (exempt) {
-                    for (let item of exempt) {
-                        if (item.contains(e.target)) {
-                            console.log(`<i> deflect!`);
-                            return;
+            if (e) {
+                if (!el.contains(e.target)) {
+                    if (exempt) {
+                        for (let item of exempt) {
+                            if (item.contains(e.target)) {
+                                console.log(`<i> deflect!`);
+                                return;
+                            }
                         }
                     }
+                    if (typeof closeCallback === 'function') {
+                        closeCallback();
+                    }
+                    el.remove();
+                    document.body.removeEventListener('mousedown', closeMenu);
                 }
-                if (typeof closeCallback === 'function') {
-                    closeCallback();
-                }
-                el.remove();
-                document.body.removeEventListener('mousedown', closeMenu);
+            } else {
+                closeMenu(document.body);
             }
         }
 
@@ -646,11 +748,29 @@ var UI = {
         changeCSSVar: function (varname, value) {
             document.documentElement.style.setProperty(`--${varname}`, value);
         },
-        applyTheme: function (color1, color2, dark) {
+        applyTheme: async function (color1, color2, dark) {
+            const appear = await set.read('UIAppearance');
+
+            if (color1 === "noWall" || color2 === "noWall") {
+                if (appear === "dark") {
+                    color1 = "#101030";
+                    dark = true;
+                } else {
+                    color1 = "#ffffff";
+                    dark = false;
+                }
+            } else {
+                if (appear === "dark") {
+                    dark = true;
+                } else if (appear === "light") {
+                    dark = false;
+                }
+            }
+
             const theme = MaterialUI.themeFromSourceColor(MaterialUI.argbFromHex(color1), [
                 {
                     name: "custom-1",
-                    value: MaterialUI.argbFromHex(color2),
+                    value: MaterialUI.argbFromHex(color1),
                     blend: true,
                     dark
                 },

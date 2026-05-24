@@ -86,8 +86,10 @@ export async function launch(FS, UI, WD) {
             mobileSwitch.addEventListener('change', function () {
                 if (mobileSwitch.selected) {
                     set.write('mobile', 'true');
+                    UI.snack(`Restart WebDesk to use mobile UI`);
                 } else {
-                    set.del('mobile');
+                    set.write('mobile', 'false');
+                    UI.snack(`Restart WebDesk to disable mobile UI`);
                 }
             });
 
@@ -169,20 +171,44 @@ export async function launch(FS, UI, WD) {
             const buttonCont = UI.create('div', newPane, 'dialog-box-two-buttons no-padding');
             const light = UI.button('Light', buttonCont, 'md-outlined-button', 'flex-grow-1');
             light.addEventListener('click', async function () {
-                UI.system.applyTheme(await set.read('material-hex'), await set.read('material-hex'), false);
+                await set.write('UIAppearance', 'light');
+                await UI.system.applyTheme(await set.read('material-hex'), await set.read('material-hex'), false);
             });
-            const dark = UI.button('Dark', buttonCont, 'md-filled-button', 'flex-grow-1');
+            const dark = UI.button('Dark', buttonCont, 'md-outlined-button', 'flex-grow-1');
             dark.addEventListener('click', async function () {
-                UI.system.applyTheme(await set.read('material-hex'), await set.read('material-hex'), true);
+                await set.write('UIAppearance', 'dark');
+                await UI.system.applyTheme(await set.read('material-hex'), await set.read('material-hex'), true);
+            });
+            const def = UI.button('Default', buttonCont, 'md-filled-button', 'flex-grow-1');
+            def.addEventListener('click', async function () {
+                await set.del('UIAppearance');
+                await UI.initialize();
             });
 
             UI.text('Wallpaper', newPane);
+
+            const barbox = UI.create('div', newPane, 'flexbox bar margin-bottom-small');
+            UI.text('Use wallpaper', barbox, 'flexbox-left');
+            const wallSwitch = UI.create('md-switch', barbox, 'flexbox-right');
+            wallSwitch.addEventListener('change', async function () {
+                if (wallSwitch.selected === false) {
+                    await set.write('showWall', 'false');
+                    buttonCont2Disable();
+                    await UI.initialize();
+                } else {
+                    await set.del('showWall');
+                    buttonCont2Enable();
+                    await UI.initialize();
+                }
+            });
+
             const buttonCont2 = UI.create('div', newPane, 'dialog-box-two-buttons no-padding');
             const reset = UI.button('Reset', buttonCont2, 'md-outlined-button');
             reset.addEventListener('click', async function () {
                 await FS.cp('/system/img/wallpaper.jpg', FS.normalizeUserPath('config/wallpaper'));
                 await UI.initialize();
             });
+
             const wall = UI.button('Upload Wallpaper', buttonCont2, 'md-filled-button', 'flex-grow-1');
             wall.addEventListener('click', async function () {
                 const upload = await FS.uploadFileFromBrowser();
@@ -191,6 +217,28 @@ export async function launch(FS, UI, WD) {
                     await UI.initialize();
                 }
             });
+
+            function buttonCont2Disable() {
+                buttonCont2.style.pointerEvents = "none";
+                buttonCont2.style.opacity = "40%";
+                def.style.pointerEvents = "none";
+                def.style.opacity = "40%";
+                wallSwitch.selected = false;
+            }
+
+            function buttonCont2Enable() {
+                buttonCont2.style.pointerEvents = "all";
+                buttonCont2.style.opacity = "100%";
+                def.style.pointerEvents = "all";
+                def.style.opacity = "100%";
+                wallSwitch.selected = true;
+            }
+
+            if (await set.read('showWall') === "false") {
+                buttonCont2Disable();
+            } else {
+                buttonCont2Enable();
+            }
 
             UI.text(`Font`, newPane);
             var fontFaces = ['Poppins', 'Arial', 'system-ui', 'Open Sans', 'Roboto', 'Roboto Mono', 'Google Sans', 'Comic Relief'];

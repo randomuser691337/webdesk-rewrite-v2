@@ -111,37 +111,39 @@ export async function launch(FS, UI, WD, path) {
 
             return div;
         },
-        results: function (text) {
+        results: function (text, showReasoning) {
             const div = UI.create('div');
             div.style.width = "480px";
 
             function stripThink(text) {
-                if (!text || typeof text !== "string") return text;
+                if (showReasoning !== true) {
+                    if (!text || typeof text !== "string") return text;
 
-                const tag = "</think>";
-                const idx = text.toLowerCase().indexOf(tag);
+                    const tag = "</think>";
+                    const idx = text.toLowerCase().indexOf(tag);
 
-                if (idx === -1) return text;
+                    if (idx === -1) return text;
 
-                return text.slice(idx + tag.length).trim();
+                    return text.slice(idx + tag.length).trim();
+                } else {
+                    return text;
+                }
             }
 
             if (text !== "DATA_UNREADABLE") {
-
-                // strip reasoning block if present
-                text = stripThink(text);
-
                 UI.text('WebGauth processing finished', div);
 
                 const textArea = UI.create('div', div, 'bar');
-                textArea.innerHTML = text;
+                textArea.innerHTML = stripThink(text);
                 textArea.style = "overflow: auto !important; max-height: 500px; margin-bottom: var(--padding-small)";
             } else {
                 UI.text('Could not process', div);
                 UI.text(`The AI couldn't read the text. Take a better picture and try again.`, div);
             }
 
-            const btn = UI.button('Back', div, 'md-outlined-button');
+            const btnCont = UI.create('div', div, 'column-button-container');
+
+            const btn = UI.button('Back', btnCont, 'md-outlined-button');
             btn.addEventListener('click', async function () {
                 const pane2 = panes.home();
                 window.main.content.appendChild(pane2);
@@ -150,6 +152,18 @@ export async function launch(FS, UI, WD, path) {
                     pane = pane2;
                 });
             });
+
+            if (showReasoning !== true) {
+                const intReason = UI.button('See reasoning process', btnCont, 'md-outlined-button');
+                intReason.addEventListener('click', async function () {
+                    const pane2 = panes.results(text, true);
+                    window.main.content.appendChild(pane2);
+                    UI.anims.crossFade(pane, pane2, 'block').then(function () {
+                        pane.remove();
+                        pane = pane2;
+                    });
+                });
+            }
 
             return div;
         }

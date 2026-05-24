@@ -336,5 +336,38 @@ addEventListener('message', async event => {
             // console.log(`<!> Filesystem operation failed. Details: `, event.data, error);
             self.postMessage({ opID: event.data.opID, op: event.data.op, contents: false, error: true });
         }
+    } else if (event.data.op === "installWebDesk") {
+        // checkFileTypes rewritten by ChatGPT to be more efficient
+        function checkFileTypes(filepath) {
+            const blobFiles = [".png", ".jpg", ".jpeg", ".mp4", ".mp3", ".wav"];
+            const lower = filepath.toLowerCase();
+
+            return blobFiles.some(ext =>
+                lower.endsWith(ext) || lower.endsWith(ext + "/")
+            );
+        }
+        const zipCode = await FS.read('/system/lib/zip.min.js');
+        eval(zipCode);
+        const res = await fetch(event.data.path + "/desk.zip", { cache: "no-cache" });
+        blob = await res.blob();
+        const reader = new zip.ZipReader(new zip.BlobReader(blob));
+        const entries = await reader.getEntries();
+
+        for (const entry of entries) {
+            if (entry.directory) {
+                console.log('<i> skipping directory: ' + entry.filename);
+                continue;
+            }
+
+            const blobit = checkFileTypes(entry.filename);
+            const contents = blobit
+                ? await entry.getData(new zip.BlobWriter())
+                : await entry.getData(new zip.TextWriter());
+
+            await FS.write("/" + entry.filename, contents, blobit ? "blob" : "text");
+        }
+
+        await reader.close();
+        self.postMessage({ opID: event.data.opID, op: event.data.op, contents: true, error: undefined });
     }
 });

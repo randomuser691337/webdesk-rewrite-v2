@@ -6,7 +6,7 @@ export async function launch(FS, UI, WD) {
     const layout = UI.leftRightLayout(undefined, shelf);
     shelf.style.zIndex = "2147483620";
 
-    if (WD.mobile === true) shelf.style.borderRadius = "0px"; shelf.style.borderTop = "1px solid rgba(var(--ui-1)";
+    if (WD.mobile === true) shelf.style.borderRadius = "0px"; shelf.style.borderTop = "1px solid rgba(var(--ui-2)";
 
     const startBtn = UI.button('', layout.left, 'button', 'shelf-button');
     UI.create('div', UI.create('div', startBtn, 'shelf-button-layer-2'), 'shelf-button-layer-3');
@@ -20,6 +20,10 @@ export async function launch(FS, UI, WD) {
     UI.systemElements.taskbarAppButtonList = UI.create('div', layout.left, 'button-list-horizontal');
 
     const controlsBtn = UI.button('4:20 PM', layout.right, 'md-text-button');
+    controlsBtn.innerText = UI.getDate();
+    setInterval(function () {
+        controlsBtn.innerText = UI.getDate();
+    }, 1000);
     controlsBtn.addEventListener('click', async function () {
         const rect = await shelf.getBoundingClientRect();
         UI.systemElements.rect.shelf = rect;
