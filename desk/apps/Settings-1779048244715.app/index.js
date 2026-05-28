@@ -24,7 +24,7 @@ export async function launch(FS, UI, WD) {
 
         win.titlebar.text.innerHTML = "";
         crumbs.forEach(function (crumb) {
-            const crumbBtn = UI.button(crumb.name, win.titlebar.text, 'button', 'small-button');
+            const crumbBtn = UI.button(UI.truncater(crumb.name, 8), win.titlebar.text, 'button', 'small-button');
             crumbBtn.addEventListener('click', async function () {
                 crumbs.splice(crumb.position + 1);
                 renderCrumb();
@@ -93,6 +93,8 @@ export async function launch(FS, UI, WD) {
                 }
             });
 
+            UI.text(`Turning this on will enable the mobile UI`, bar, 'small-text');
+
             const barai = UI.create('div', newPane, 'bar');
             const barboxai = UI.create('div', barai, 'flexbox bar');
             UI.text('LLM model', barboxai, 'flexbox-left');
@@ -113,7 +115,7 @@ export async function launch(FS, UI, WD) {
                 menu.finish();
             });
 
-            UI.text(`Turning this on will enable the mobile UI`, bar, 'small-text');
+            UI.text(`Choose the AI WebDesk uses locally`, barai, 'small-text');
 
             if (await set.read('mobile') === "true") {
                 mobileSwitch.selected = true;

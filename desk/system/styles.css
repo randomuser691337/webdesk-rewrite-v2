@@ -176,7 +176,7 @@ textarea:focus {
     border-radius: var(--radii-main);
     width: 200px;
     height: auto;
-    z-index: 99999999;
+    z-index: 999999999999999999999999999999999999;
     box-shadow: 0px 0px 15px 10px rgba(0, 0, 0, 0.05);
     border: 1px solid var(--ui-1-border-color);
     font-size: var(--small-fz) !important;
@@ -335,14 +335,13 @@ textarea:focus {
 }
 
 .titlebar-button {
-    width: 100%;
     box-sizing: border-box;
     border-radius: var(--radii-second);
     border: none;
     cursor: normal;
     text-align: left;
     background-color: transparent;
-    padding: 6px;
+    padding: 4px 6px;
     font-size: var(--small-fz);
     color: var(--text);
 }
@@ -484,6 +483,16 @@ textarea:focus {
     background-color: rgba(var(--accent), 0.25);
     padding: var(--padding-moderate);
     border: 1px solid rgba(var(--ui-1-border-color));
+}
+
+.general-container {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: var(--radii-main);
+    background-color: rgba(var(--accent), 0.25);
+    padding: var(--padding-moderate);
+    border: 1px solid rgba(var(--ui-1-border-color));
+    overflow: auto;
 }
 
 .brick-layout {

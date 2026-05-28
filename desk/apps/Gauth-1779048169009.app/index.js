@@ -20,7 +20,7 @@ export async function launch(FS, UI, WD, path) {
 
         bitmap.close?.();
 
-        return canvas.toDataURL('image/jpeg', 0.82);
+        return canvas.toDataURL('image/jpeg', 0.88);
     }
 
     async function handleImage(file, div) {
@@ -45,11 +45,11 @@ export async function launch(FS, UI, WD, path) {
         const response2 = await WD.LLM.sendToLLM(messages, OCRData, function (token) {
             tps++;
             llmResponse += token;
-        });
+        }, undefined, undefined, fast);
 
         clearInterval(tpsCount);
 
-        const newPane = panes.results(response2);
+        const newPane = await panes.results(response2);
         window.main.content.appendChild(newPane);
         UI.anims.crossFade(pane, newPane, 'block').then(function () {
             pane.remove();
@@ -61,7 +61,57 @@ export async function launch(FS, UI, WD, path) {
         loader: function () {
             const div = UI.create('div');
             div.style.width = "320px";
-            UI.text('WebGauth is loading the AI. Look at the top right for status updates.', div);
+            const loadingtxt = UI.text('Use WebDesk AI (Not 100% private) or local AI? (slow)', div);
+
+            const btncontainer = UI.create('div', div, 'button-list-horizontal');
+
+            const btn1 = UI.button('Local AI', btncontainer, 'md-filled-button');
+            btn1.addEventListener('click', async function () {
+                async function checkSupport() {
+                    if (!navigator.gpu) {
+                        return false;
+                    }
+
+                    const adapter = await navigator.gpu.requestAdapter();
+                    if (!adapter) {
+                        return false;
+                    }
+
+                    return true;
+                }
+
+                if (await checkSupport() === true) {
+                    loadingtxt.innerHTML = "WebDesk is loading the AI. This might take a sec.";
+                    btncontainer.remove();
+                    if (WD.LLM.loaded !== true) {
+                        await WD.startLLM();
+                    }
+                    const pane2 = panes.home();
+                    window.main.content.appendChild(pane2);
+                    UI.anims.crossFade(pane, pane2, 'block').then(function () {
+                        pane.remove();
+                        pane = pane2;
+                    });
+                } else {
+                    UI.text(`Enable WebGPU support`, window.main.content, 'bold');
+                    UI.text(`To enable WebGPU support on Chrome:`, window.main.content);
+                    UI.text(`- Go to chrome://flags`, window.main.content);
+                    UI.text(`- Search for and enable "Unsafe WebGPU support"`, window.main.content);
+                    UI.text(`- Restart Chrome (or your device)`, window.main.content);
+                }
+            });
+
+            const btn2 = UI.button('WebDesk AI', btncontainer, 'md-filled-button');
+            btn2.addEventListener('click', async function () {
+                await WD.startLLMService();
+                const pane2 = panes.home();
+                window.main.content.appendChild(pane2);
+                UI.anims.crossFade(pane, pane2, 'block').then(function () {
+                    pane.remove();
+                    pane = pane2;
+                });
+            });
+
             const special = UI.text('', div);
             special.innerHTML = "<b>Tips:</b> Close all the tabs you can. AI is resource-intensive, and low-end laptops can't handle it well.";
             return div;
@@ -111,7 +161,7 @@ export async function launch(FS, UI, WD, path) {
 
             return div;
         },
-        results: function (text, showReasoning) {
+        results: async function (text, showReasoning) {
             const div = UI.create('div');
             div.style.width = "480px";
 
@@ -134,7 +184,13 @@ export async function launch(FS, UI, WD, path) {
                 UI.text('WebGauth processing finished', div);
 
                 const textArea = UI.create('div', div, 'bar');
-                textArea.innerHTML = stripThink(text);
+                const newt = stripThink(text);
+                const script = document.createElement("script");
+                script.src = "https://cdn.jsdelivr.net/npm/marked/marked.min.js";
+                script.onload = async function () {
+                    textArea.innerHTML = await marked.parse(newt);
+                };
+                document.head.appendChild(script);
                 textArea.style = "overflow: auto !important; max-height: 500px; margin-bottom: var(--padding-small)";
             } else {
                 UI.text('Could not process', div);
@@ -156,7 +212,7 @@ export async function launch(FS, UI, WD, path) {
             if (showReasoning !== true) {
                 const intReason = UI.button('See reasoning process', btnCont, 'md-outlined-button');
                 intReason.addEventListener('click', async function () {
-                    const pane2 = panes.results(text, true);
+                    const pane2 = await panes.results(text, true);
                     window.main.content.appendChild(pane2);
                     UI.anims.crossFade(pane, pane2, 'block').then(function () {
                         pane.remove();
@@ -169,38 +225,8 @@ export async function launch(FS, UI, WD, path) {
         }
     }
 
-    async function checkSupport() {
-        if (!navigator.gpu) {
-            return false;
-        }
-
-        const adapter = await navigator.gpu.requestAdapter();
-        if (!adapter) {
-            return false;
-        }
-
-        return true;
-    }
-
-    if (await checkSupport() === true) {
-        const newPane = panes.loader();
-        pane = newPane;
-        window.main.content.appendChild(newPane);
-        window.finish();
-        if (WD.LLM.loaded !== true) {
-            await WD.startLLM();
-        }
-        const pane2 = panes.home();
-        window.main.content.appendChild(pane2);
-        UI.anims.crossFade(pane, pane2, 'block').then(function () {
-            pane.remove();
-            pane = pane2;
-        });
-    } else {
-        UI.text(`Enable WebGPU support`, window.main.content, 'bold');
-        UI.text(`To enable WebGPU support on Chrome:`, window.main.content);
-        UI.text(`- Go to chrome://flags`, window.main.content);
-        UI.text(`- Search for and enable "Unsafe WebGPU support"`, window.main.content);
-        UI.text(`- Restart Chrome (or your device)`, window.main.content);
-    }
+    const newPane = panes.loader();
+    pane = newPane;
+    window.main.content.appendChild(newPane);
+    window.finish();
 }

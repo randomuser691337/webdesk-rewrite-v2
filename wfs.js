@@ -187,7 +187,7 @@ var FS = {
             i++;
         }
 
-        return items;
+        return Object.values(items);
     },
     mkdir: async function (path) {
         try {

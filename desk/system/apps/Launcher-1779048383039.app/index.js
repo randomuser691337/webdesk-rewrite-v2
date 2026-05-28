@@ -69,7 +69,7 @@ export async function launcher(FS, UI, WD, shelfRect) {
     async function refreshLauncher() {
         const apps = await FS.ls('/apps/');
         filesView.innerHTML = "";
-        Object.values(apps).forEach(async function (file) {
+        apps.forEach(async function (file) {
             const manifest = JSON.parse(await FS.read(file.path + "/manifest.json"))
             const btn = UI.button(manifest.name, filesView, 'md-filled-button');
             const layout = UI.leftRightLayout(undefined, btn);

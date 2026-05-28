@@ -1,6 +1,23 @@
 export var name = "DeskIDE";
 
 // Folder browser debugged by Claude, tabs added by Claude
+// recents COMPLETELY rewritten by Claude
+var recents = {
+    add: async function (path) {
+        let items = await FS.read(FS.normalizeUserPath(`appdata/DeskIDE-1779047593382.app/recents.json`));
+        let recentItems = items ? JSON.parse(items) : [];
+        recentItems = recentItems.filter(item => item.path !== path);
+        let check = await FS.checkType(path);
+        if (check === "directory") check = true;
+        recentItems.push({ path: path, folder: check });
+        recentItems = recentItems.slice(-30);
+        await FS.write(FS.normalizeUserPath(`appdata/DeskIDE-1779047593382.app/recents.json`), JSON.stringify(recentItems));
+    },
+    list: async function () {
+        let items = await FS.read(FS.normalizeUserPath(`appdata/DeskIDE-1779047593382.app/recents.json`));
+        return items ? JSON.parse(items) : [];
+    }
+}
 
 export async function launch(FS, UI, WD, path) {
     console.log(WD.tasks[id].task);
@@ -8,6 +25,7 @@ export async function launch(FS, UI, WD, path) {
     if (WD.mobile === false) {
         window.main.window.style.width = "320px";
     }
+
     const start = UI.create('div', window.main.content);
     UI.text('Open an existing project/folder, or start a new project/folder', start);
     const buttonCont = UI.create('div', start, 'dialog-box-two-buttons');
@@ -24,13 +42,66 @@ export async function launch(FS, UI, WD, path) {
 
     const newProject = UI.button('New Project', buttonCont, 'md-filled-button', 'flex-grow-1');
     newProject.addEventListener('click', function () {
+        const projWin = UI.window('Project Creation Window');
+        if (WD.mobile === false) {
+            projWin.main.window.style.width = "240px";
+        }
+        UI.text(`Version, ID and app path are automatically created`, projWin.main.content, 'small-text');
+        const UICont = UI.create('div', projWin.main.content, 'button-list-normal');
+        const appName = UI.input("App name", UICont, 'flex-grow-1 msg-ui wide');
+        const appDesc = UI.input("App description", UICont, 'flex-grow-1 msg-ui wide');
+        const appDev = UI.input("Developer name", UICont, 'flex-grow-1 msg-ui wide');
+        const newProject = UI.button('Create app', UICont, 'md-filled-button');
+        newProject.addEventListener('click', async function () {
+            const id = Date.now();
+            const appData = {
+                "name": appName.value,
+                "version": "1.0",
+                "developer": appDev.value,
+                "id": id,
+                "icon": undefined,
+                "fsPath": `/apps/${appName.value}-${id}.app`,
+                "description": appDesc.value
+            }
 
+            await FS.write(`/apps/${appName.value}-${id}.app/manifest.json`, JSON.stringify(appData));
+            await FS.write(`/apps/${appName.value}-${id}.app/index.js`, await FS.read('/apps/DeskIDE-1779047593382.app/example.js'));
+            projWin.close();
+            await deskide(FS, UI, WD, `/apps/${appName.value}-${id}.app/`);
+        });
+        projWin.finish();
+    });
+
+
+
+    UI.text("Recent projects", start);
+
+    const recent = UI.create('div', start, 'general-container');
+    recent.style.maxHeight = "200px";
+    const objs = await recents.list();
+    objs.forEach(function (obj) {
+        const btn = UI.button('', undefined, 'button', 'list-button');
+        const layout = UI.leftRightLayout(undefined, btn);
+
+        if (obj.folder === true) {
+            UI.icon('folder', layout.left, 'symbol-style-files');
+        } else {
+            UI.icon('draft', layout.left, 'symbol-style-files');
+        }
+
+        const filetxt = UI.span(obj.path, layout.left);
+        filetxt.style.marginLeft = "var(--padding-small)";
+        recent.prepend(btn);
+        btn.addEventListener('click', async function () {
+            await deskide(FS, UI, WD, obj.path);
+        });
     });
 
     window.finish();
 }
 
 export async function deskide(FS, UI, WD, path) {
+    await recents.add(path);
     const window = UI.window('DeskIDE');
     let editorFontSize = "12px";
     window.main.content.style = "display: flex; padding: 0px;";
@@ -85,6 +156,7 @@ export async function deskide(FS, UI, WD, path) {
 
         tab.editor.resize();
         tab.editor.focus();
+        setupEditorMenuBar(tab.filePath, tab.editor);
     }
 
     function closeTab(tab) {
@@ -166,7 +238,7 @@ export async function deskide(FS, UI, WD, path) {
 
             if (!loaded) {
                 loaded = true;
-                for (const file of Object.values(ls)) {
+                for (const file of ls) {
                     if (file.kind === 'directory') {
                         await buildFSNode(file.path, childContainer);
                     } else {
@@ -227,7 +299,7 @@ export async function deskide(FS, UI, WD, path) {
 
         editor.setOptions({
             fontFamily: 'Roboto Mono',
-            fontSize: await FS.read('EditorTextSize')
+            fontSize: await set.read('EditorTextSize')
         });
 
         editor.commands.addCommand({
@@ -258,13 +330,15 @@ export async function deskide(FS, UI, WD, path) {
         return tab;
     }
 
-    let menuBarInitialized = false;
     let currentEditorRef = null;
     let currentPathRef = null;
 
     function setupEditorMenuBar(filePath, editor) {
+        currentEditorRef = editor;
+        currentPathRef = filePath;
+
         window.titlebar.text.innerHTML = "";
-        const buttonContainer = UI.container(undefined, window.titlebar.text, 'column-button-container full-width');
+        const buttonContainer = UI.container(undefined, window.titlebar.text, 'full-width');
         const newToolbar = UI.toolbar.createToolbar(buttonContainer);
 
         var editorActions = {
@@ -387,12 +461,6 @@ export async function deskide(FS, UI, WD, path) {
                 ctx.finish();
             }
         };
-
-        currentEditorRef = editor;
-        currentPathRef = filePath;
-
-        if (menuBarInitialized) return;
-        menuBarInitialized = true;
 
         const fileButton = newToolbar.toolbarButton('File', menu.file);
         const editButton = newToolbar.toolbarButton('Edit', menu.edit);

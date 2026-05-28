@@ -17,7 +17,7 @@ export async function launch(FS, UI, WD) {
     }
     textedit.titlebar.text.innerHTML = "";
     textedit.titlebar.main.style.padding = "var(--padding-small)";
-    const buttonContainer = UI.container(undefined, textedit.titlebar.text, 'column-button-container full-width');
+    const buttonContainer = UI.container(undefined, textedit.titlebar.text, 'full-width');
     var menuOpen = false;
     var menuCloseFunction = false;
     var menuName = undefined;

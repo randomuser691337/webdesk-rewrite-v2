@@ -97,7 +97,11 @@
                     const token = await FS.read(FS.normalizeUserPath('config/token'));
                     console.log('<i> Connected to WebDesk server');
                     if (token) {
-                        WD.socket.emit("login", token);
+                        if (await set.read('AIHost') !== "true") {
+                            WD.socket.emit("login", token);
+                        } else {
+                            WD.socket.emit("ai_login", token);
+                        }
                     } else {
                         console.log('<!> No token');
                     }
@@ -115,6 +119,7 @@
                         sys.webid.token = await FS.read(FS.normalizeUserPath('config/token'));
                         sys.webid.priv = thing.priv;
                         sys.webid.userid = thing.userid;
+                        sys.webid.username = thing.username;
                         if (thing.priv === 0) {
                             UI.notif('Your account has been limited.', `You can still use WebDesk normally, but you can't use online services.`);
                         }

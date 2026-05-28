@@ -2,6 +2,7 @@
 // manages user-related socket.io actions
 
 export async function launch(FS, UI, WD, webid) {
+    WD.webid = webid;
     const messages = {
         openConversations: {
 

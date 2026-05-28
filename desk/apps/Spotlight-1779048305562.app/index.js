@@ -192,7 +192,7 @@ export async function reIndex(UI, FS, WD) {
 
     async function scanFS(path) {
         const data = [];
-        const entries = Object.values(await FS.ls(path));
+        const entries = await FS.ls(path);
         console.log(entries);
 
         for (const entry of entries) {
@@ -204,7 +204,7 @@ export async function reIndex(UI, FS, WD) {
 
             if (entry.kind === "directory") {
                 if (entry.name.endsWith(".app")) {
-                    const test = Object.values(await FS.ls(entry.path));
+                    const test = await FS.ls(entry.path);
                     if (test.some(i => i.kind === "file" && i.name === "index.js")) {
                         data.push({ type: "app", name: entry.name, path: entry.path });
                     }

@@ -40,7 +40,7 @@ export async function editor(path, contents) {
         fontSize: "12px"
     });
 
-    const buttonContainer = UI.container(undefined, textedit.titlebar.text, 'column-button-container full-width');
+    const buttonContainer = UI.container(undefined, textedit.titlebar.text, 'full-width');
     var menuOpen = false;
     var menuCloseFunction = false;
     var menuName = undefined;

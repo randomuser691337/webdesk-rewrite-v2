@@ -103,7 +103,7 @@ export async function launch(FS, UI, WD, path) {
 
         if (!currentPath.endsWith('/')) currentPath = currentPath + "/";
 
-        Object.values(fileList).forEach(function (file) {
+        fileList.forEach(function (file) {
 
             function contextm(event) {
                 const menu = UI.contextMenu(event);
@@ -316,7 +316,7 @@ export async function pickFile(FS, UI, WD, parameters) {
 
             if (!currentPath.endsWith('/')) currentPath = currentPath + "/";
 
-            Object.values(fileList).forEach(function (file) {
+            fileList.forEach(function (file) {
                 const btn = UI.button('', filesView, 'button', 'list-button');
                 console.log(btn);
                 const layout = UI.leftRightLayout(undefined, btn);

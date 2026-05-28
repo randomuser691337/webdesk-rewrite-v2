@@ -96,11 +96,37 @@ export async function deactivate() {
     // UI.system.llmRing('disabled');
 }
 
-export async function send(messages, userContent, onToken, temp, top_p) {
+export async function send(messages, userContent, onToken, temp, top_p, webid, socket, img) {
     try {
         if (!engine) {
-            console.error("<!> Engine not initialized. Call main() first.");
-            return { messages, responseMessage: `AI features aren't running. Enable them in Settings -> Manage AI.` };
+            console.error("<!> USING WEB VERSION...");
+            console.log(webid, socket);
+            socket.emit("aimsg", webid.token, {
+                username: webid.username,
+                content: { text: userContent, data: img },
+                timestamp: Date.now()
+            });
+
+            return await new Promise((resolve, reject) => {
+
+                function handleResponse(msg) {
+                    console.log(msg);
+
+                    socket.off('ai_response', handleResponse);
+
+                    resolve({
+                        messages,
+                        responseMessage: msg.content
+                    });
+                }
+
+                socket.on('ai_response', handleResponse);
+
+                setTimeout(() => {
+                    socket.off('ai_response', handleResponse);
+                    reject(new Error("AI response timeout"));
+                }, 180000);
+            });
         }
 
         // UI.system.llmRing('thinking');

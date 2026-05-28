@@ -274,6 +274,133 @@
             },
         };
 
+        const BrowserFS = {
+            requestAccess: async function () {
+                const root = await window.showDirectoryPicker({ mode: 'readwrite' });
+                return BrowserFS._createHandle(root);
+            },
+
+            _resolvePath: async function (root, path) {
+                const parts = path.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+                let handle = root;
+                for (const part of parts) {
+                    handle = await handle.getDirectoryHandle(part, { create: false });
+                }
+                return handle;
+            },
+
+            _resolveFile: async function (root, path) {
+                const parts = path.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+                let dir = root;
+                for (const part of parts.slice(0, -1)) {
+                    dir = await dir.getDirectoryHandle(part, { create: false });
+                }
+                const fileName = parts.at(-1);
+                return { dir, fileName };
+            },
+
+            _createHandle: function (root) {
+                return {
+                    ls: async function (path = '/') {
+                        const dir = path === '/' ? root : await BrowserFS._resolvePath(root, path);
+                        const entries = [];
+                        for await (const [name, handle] of dir.entries()) {
+                            entries.push({
+                                name,
+                                path: path.replace(/\/$/, '') + '/' + name,
+                                kind: handle.kind  // 'file' or 'directory'
+                            });
+                        }
+                        return entries;
+                    },
+
+                    read: async function (path) {
+                        try {
+                            const { dir, fileName } = await BrowserFS._resolveFile(root, path);
+                            const fileHandle = await dir.getFileHandle(fileName);
+                            const file = await fileHandle.getFile();
+                            if (file.type.startsWith('image')) return file;
+                            return await file.text();
+                        } catch (error) {
+                            console.log(error);
+                            return null;
+                        }
+                    },
+
+                    write: async function (path, contents, type = 'text') {
+                        const parts = path.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+                        let dir = root;
+                        for (const part of parts.slice(0, -1)) {
+                            dir = await dir.getDirectoryHandle(part, { create: true });
+                        }
+                        const fileName = parts.at(-1);
+                        const fileHandle = await dir.getFileHandle(fileName, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(contents);
+                        await writable.close();
+                    },
+
+                    mkdir: async function (path) {
+                        const parts = path.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
+                        let dir = root;
+                        for (const part of parts) {
+                            dir = await dir.getDirectoryHandle(part, { create: true });
+                        }
+                        return dir;
+                    },
+
+                    rm: async function (path) {
+                        const { dir, fileName } = await BrowserFS._resolveFile(root, path);
+                        await dir.removeEntry(fileName, { recursive: true });
+                    },
+
+                    cp: async function (src, dest) {
+                        const contents = await this.read(src);
+                        await this.write(dest, contents);
+                    },
+
+                    checkType: async function (path) {
+                        const { dir, fileName } = await BrowserFS._resolveFile(root, path);
+                        try {
+                            await dir.getFileHandle(fileName);
+                            const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.avif'];
+                            const isImage = imageExts.some(ext => fileName.endsWith(ext));
+                            if (isImage) {
+                                return 'image';
+                            } else {
+                                return 'file';
+                            }
+                        } catch {
+                            try {
+                                await dir.getDirectoryHandle(fileName);
+                                return 'directory';
+                            } catch {
+                                return null;
+                            }
+                        }
+                    },
+
+                    uploadFileFromBrowser: async function (destPath) {
+                        return new Promise((resolve) => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.style.display = 'none';
+                            document.body.appendChild(input);
+                            input.addEventListener('change', async function () {
+                                const file = this.files[0];
+                                const isImage = file.type.startsWith('image');
+                                const content = isImage ? file : await file.text();
+                                if (destPath) await this.write(destPath, content);
+                                input.remove();
+                                resolve({ isImage, file, content });
+                            });
+                            input.click();
+                        });
+                    }
+                };
+            }
+        };
+
         // LITERALLY COPIED from WebDesk 0.3.3's previous rebuild
 
         var set = {
@@ -406,9 +533,9 @@
             },
             LLM: {
                 loaded: false,
-                sendToLLM: async function (messages, userContent, token, temp, top_p) {
+                sendToLLM: async function (messages, userContent, token, temp, top_p, imgOpt) {
                     try {
-                        const result = await WD.LLM.module.send(messages, userContent, token, temp, top_p);
+                        const result = await WD.LLM.module.send(messages, userContent, token, temp, top_p, sys.webid, WD.socket, imgOpt);
                         if (result && result.responseMessage) {
                             return result.responseMessage;
                         } else {
@@ -554,12 +681,6 @@
                 // BOOTLOADER CODE
                 // BOOTLOADER CODE
 
-                // Polyfill for environments without scheduler.yield
-                const yieldToMain = () =>
-                    typeof scheduler !== "undefined" && scheduler.yield
-                        ? scheduler.yield()
-                        : new Promise(resolve => setTimeout(resolve, 0));
-
                 // Rewritten by Claude to avoid blocking the main thread during installs
                 async function installWebDesk() {
                     try {
@@ -569,9 +690,6 @@
                         const entries = await reader.getEntries();
 
                         for (const entry of entries) {
-                            // Yield to main thread between every entry
-                            await yieldToMain();
-
                             if (entry.directory) {
                                 console.log('<i> skipping directory: ' + entry.filename);
                                 continue;
